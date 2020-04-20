@@ -1,5 +1,5 @@
 import gym
-from stable_baselines.common.policies import MlpPolicy
+from stable_baselines.common.policies import *
 from stable_baselines import TRPO
 import pandas as pd
 import time
@@ -9,8 +9,8 @@ from TradeEnv import TradeEnv
 import numpy as np
 from Util.Util import *
 from Util.Callback import CustomCallback
-episode = 3500
-EP_LEN = 300
+episode = 5000
+EP_LEN = 250 * 3
 FILE_TAG = "TRPO"
 mode = "train"
 
@@ -21,7 +21,7 @@ def post_processor(state):
 
 env = TradeEnv(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
                start_episode=0, episode_len=EP_LEN, stock_code='000938_XSHE',
-               result_path="E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/", stock_data_path='../Data/'+mode+'/',
+               result_path="E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/", stock_data_path='E:\PycharmProjects\DPPO\myDPPO\Data/train/',
                poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor,
                max_episode_days=EP_LEN)
 env.seed(0)
@@ -35,7 +35,7 @@ model.save("./model")
 mode = 'test'
 env = TradeEnv(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
                start_episode=0, episode_len=EP_LEN, stock_code='000938_XSHE',
-               result_path="E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/", stock_data_path='../Data/train/',
+               result_path="E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/", stock_data_path='E:\PycharmProjects\DPPO\myDPPO\Data/test/',
                poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor,
                max_episode_days=EP_LEN)
 env.seed(0)

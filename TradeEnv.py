@@ -67,8 +67,6 @@ class TradeEnv(gym.Env):
         self.step_ = 0
         self.his_reward = []
         self.post_processor = post_processor
-        self.next_day_counter = 0
-        self.max_episode_days = max_episode_days
         assert trade_time == "open" or trade_time == "close"
         self.trade_time = trade_time
         self.start_index_bound = self.obs_time + 1
@@ -105,6 +103,8 @@ class TradeEnv(gym.Env):
         return self.get_state()
 
     def step(self, action):
+        if self.step_ >= self.episode_len - 1:
+            self.done = True
         self.step_ += 1
         quant = 0
         # 记录交易时间
@@ -113,8 +113,11 @@ class TradeEnv(gym.Env):
         flag = False
         # 交易标记
         traded = False
-        # 当前（分钟）每股收盘价作为price
-        price = self.stock_data[self.current_time][1]
+        # 当前（分钟）每股收盘/开盘价作为price
+        if self.trade_time == 'close':
+            price = self.stock_data[self.current_time][1]
+        elif self.trade_time == 'open':
+            price = self.stock_data[self.current_time][0]
         # 买入
         action = np.squeeze(action)
         action = [action]
@@ -165,10 +168,6 @@ class TradeEnv(gym.Env):
         # 计算下一状态和奖励
         # 如果采用t+1结算 and 交易了 则跳到下一天
         self.set_next_day()
-        # 破产或超过180个交易日结束本episode
-        if (self.money == 0 and self.stock_amount == 0) or (
-                self.max_episode_days is not None and self.next_day_counter >= self.max_episode_days):
-            self.done = True
         # 先添加到历史中，reward为空
         self.trade_history.append(
             [temp_time, price, quant, self.stock_amount, self.money, None, action[0]])
