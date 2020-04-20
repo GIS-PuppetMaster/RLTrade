@@ -60,7 +60,7 @@ class TradeEnv(gym.Env):
         self.obs_delta_frequency = int(obs_delta_frequency[0:-4])
         self.action_space = spaces.Box(low=np.array([-1]), high=np.array([1]))
         self.observation_space = spaces.Box(
-            low=np.array([[float('inf') for _ in range(26)]
+            low=np.array([[float('-inf') for _ in range(26)]
                           for _ in range(self.obs_time // self.obs_delta_frequency)]),
             high=np.array([[float('inf') for _ in range(26)]
                            for _ in range(0, self.obs_time // self.obs_delta_frequency)]))
@@ -183,14 +183,22 @@ class TradeEnv(gym.Env):
     def get_reward(self):
         now_hist = self.trade_history[-1]
         now_value = self.get_value(now_hist)
+        now_price = now_hist[1]
         if len(self.trade_history) >= 2:
             last_hist = self.trade_history[-2]
             last_value = self.get_value(last_hist)
+            last_price = last_hist[1]
         else:
             last_value = self.principal
+            if self.trade_time == 'close':
+                last_price = self.stock_data[self.start_time][1]
+            elif self.trade_time == 'open':
+                last_price = self.stock_data[self.start_time][0]
         if last_value == 0:
             last_value = self.principal
-        reward = ((now_value - last_value) / last_value) * 100
+        reward = (((now_value - last_value) / last_value) - ((now_price - last_price) / last_price)) * 100
+        # if len(self.trade_history) > 10 and (np.array(self.trade_history[-10:])[:,2]==0).all():
+        #     reward -= 1
 
         return reward
 
