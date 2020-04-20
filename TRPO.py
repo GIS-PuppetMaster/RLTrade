@@ -8,8 +8,8 @@ from gym import spaces
 from TradeEnv import TradeEnv
 import numpy as np
 from Util.Util import *
-
-episode = 5000
+from Util.Callback import CustomCallback
+episode = 3500
 EP_LEN = 300
 FILE_TAG = "TRPO"
 mode = "train"
@@ -26,15 +26,16 @@ env = TradeEnv(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_ti
                max_episode_days=EP_LEN)
 env.seed(0)
 env = env.unwrapped
+callback = CustomCallback()
 model = TRPO(MlpPolicy, env, verbose=1, tensorboard_log="./log/")
-model.learn(total_timesteps=episode * EP_LEN)
+model.learn(total_timesteps=episode * EP_LEN, callback=callback)
 model.save("./model")
 
 
 mode = 'test'
 env = TradeEnv(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
                start_episode=0, episode_len=EP_LEN, stock_code='000938_XSHE',
-               result_path= "E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/", stock_data_path='../Data/train/',
+               result_path="E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/", stock_data_path='../Data/train/',
                poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor,
                max_episode_days=EP_LEN)
 env.seed(0)

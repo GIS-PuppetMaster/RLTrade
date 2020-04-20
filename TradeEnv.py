@@ -3,9 +3,9 @@ import pandas as pd
 import plotly as py
 import plotly.graph_objs as go
 from gym import spaces
-import datetime as dt
 from datetime import datetime
 from Util.Util import *
+import numpy as np
 
 """
 日间择时，开盘或收盘交易
@@ -71,7 +71,7 @@ class TradeEnv(gym.Env):
         self.max_episode_days = max_episode_days
         assert trade_time == "open" or trade_time == "close"
         self.trade_time = trade_time
-        self.start_index_bound = self.obs_time+1
+        self.start_index_bound = self.obs_time + 1
         if start_index_bound is not None:
             assert self.start_index_bound <= start_index_bound
             self.start_index_bound = start_index_bound
@@ -121,7 +121,7 @@ class TradeEnv(gym.Env):
         if action[0] > 0:
             # 按钱数百分比买入
             # 当前的钱可以买多少手
-            amount = int(self.money / (100 * price))
+            amount = self.money // (100 * price * (1 + self.poundage_rate))
             # 实际买多少手
             quant = int(action[0] * amount)
             if quant == 0:
