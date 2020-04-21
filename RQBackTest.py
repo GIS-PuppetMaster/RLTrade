@@ -46,6 +46,7 @@ indicators = [
     ('DR', daily_return, ['close']),
     ('DLR', daily_log_return, ['close'])
 ]
+net_type = 'large_net'
 
 
 def get_indicator(raw):
@@ -82,7 +83,6 @@ def init(context):
     # context.XSHE000938_df = read_csv_as_df(csv_path)
     import os
     strategy_file_path = context.config.base.strategy_file
-    net_type = 'large_net'
     file_list = os.listdir(os.path.join(os.path.dirname(strategy_file_path), './checkpoints/'+net_type+'/'))
     max_index = -1
     max_file_name = ''
@@ -91,7 +91,7 @@ def init(context):
         if index > max_index:
             max_index = index
             max_file_name = filename
-    max_file_name = 'rl_model_553984_steps.zip'
+    # max_file_name = 'rl_model_553984_steps.zip'
     model_path = os.path.join(os.path.dirname(strategy_file_path), "./checkpoints/"+net_type+"/"+max_file_name)
     logger.info('model_path:'+model_path)
     model = TRPO.load(model_path)
@@ -118,33 +118,36 @@ def handle_bar(context, bar):
     # 归一化
     s = np.sign(s_raw) * np.log10(np.abs(s_raw + 1))/10
     # 预测
-    action = context.model.predict(s)
-    # 获取当前股数
-    stock_amount = get_position(context.stock_code).closable
-    # 获取资金
-    money = context.portfolio.cash
-    # 获取昨天的价格TODO：这里好像应该设置为今天价格，不过影响不大
-    price = s_raw[-1,1]
-    # 交易量
-    quant = 0
-    # 自定义环境中的交易函数
-    if action[0] > 0:
-        # 按钱数百分比买入
-        # 当前的钱可以买多少手
-        amount = money // (100 * price * (1 + 1.5e-3))
-        # 实际买多少手
-        quant = int(action[0] * amount)
-    # 卖出
-    elif action[0] < 0:
-        # 当前手中有多少手
-        amount = stock_amount / 100
-        if amount != 0:
-            # 实际卖出多少手
-            quant = int(action[0] * amount)
+    action = context.model.predict(s)[0]
+    # 下单
+    order_percent(context.stock_code, action[0])
+    # # 获取当前股数
+    # stock_amount = get_position(context.stock_code).closable
+    # # 获取资金
+    # money = context.portfolio.cash
+    # # 获取昨天的价格TODO：这里好像应该设置为今天价格，不过影响不大
+    # price = s_raw[-1,1]
+    # # 交易量
+    # quant = 0
+    # # 自定义环境中的交易函数
+    # if action[0] > 0:
+    #     # 按钱数百分比买入
+    #     # 当前的钱可以买多少手
+    #     amount = money // (100 * price * (1 + 1.5e-3))
+    #     # 实际买多少手
+    #     quant = int(action[0] * amount)
+    # # 卖出
+    # elif action[0] < 0:
+    #     # 当前手中有多少手
+    #     amount = stock_amount / 100
+    #     if amount != 0:
+    #         # 实际卖出多少手
+    #         quant = int(action[0] * amount)
+    #
+    # # 交易
+    # if quant!=0:
+    #     # order_lots(context.stock_code, quant)
 
-    # 交易
-    if quant!=0:
-        order_lots(context.stock_code, quant)
 
 
 

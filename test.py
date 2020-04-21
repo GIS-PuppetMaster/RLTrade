@@ -3,6 +3,8 @@ from stable_baselines import *
 from TradeEnv import TradeEnv
 from Util.Util import *
 import os
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 episode = 2500
 EP_LEN = 250 * 3
@@ -14,9 +16,8 @@ n_training_envs = 1
 def post_processor(state):
     return log10plus1R(state) / 10
 
-
-
-file_list = os.listdir('./checkpoints/')
+net_type = 'large_net/'
+file_list = os.listdir('./checkpoints/'+net_type)
 max_index = -1
 max_file_name = ''
 for filename in file_list:
@@ -24,24 +25,53 @@ for filename in file_list:
     if index > max_index:
         max_index = index
         max_file_name = filename
-max_file_name = 'rl_model_659456_steps.zip'
-model = TRPO.load('./checkpoints/' + max_file_name)
+# max_file_name = 'rl_model_659456_steps.zip'
+model = TRPO.load('./checkpoints/' + net_type + max_file_name)
 mode = 'test'
+
 env = TradeEnv(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
                start_episode=0, episode_len=EP_LEN, stock_code='000938_XSHE',
                result_path="E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/",
                stock_data_path='./Data/test/',
-               poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor,
-               max_episode_days=EP_LEN)
+               poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor)
 env.seed(0)
 env = env.unwrapped
 env.result_path = "E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/"
-for ep in range(50):
+profit = []
+base = []
+ep = 0
+while ep < 50:
     print(ep)
     s = env.reset()
-    for step in range(EP_LEN):
+    flag = False
+    for step in range(250):
         a, _ = model.predict(s)
-        s, _, done, _ = env.step(a)
-        if done:
+        s, r, done, _ = env.step(a)
+        if done or s is None or r is None:
+            flag = True
             break
     env.render("manual")
+    if not flag:
+        his = np.array(env.trade_history)
+        profit_list = np.squeeze(
+            (his[:, 4].astype(np.float32) + his[:, 1].astype(np.float32) * his[:, 3].astype(
+                np.float32) - env.principal) / env.principal).tolist()
+        price_list = np.array(np.squeeze(his[:, 1]))
+        price_list = ((price_list - price_list[0]) / price_list[0]).astype(np.float32).tolist()
+        profit.append(profit_list)
+        base.append(price_list)
+        ep += 1
+# seborn绘图
+plt.close('all')
+ax = plt.subplot(1, 1, 1)
+ax.set_title('TRPO')
+ax.set_xlabel('Episode')
+ax.set_ylabel('Moving averaged episode averaged profit')
+profit = np.array(profit)
+base = np.array(base)
+sns.tsplot(data=profit, time=np.arange(0, profit.shape[1]), ax=ax, color='r')
+sns.tsplot(data=base, time=np.arange(0, base.shape[1]), ax=ax, color='b')
+try:
+    plt.savefig(max_file_name +'.png')
+except:
+    print('reward图片被占用，无法写入')

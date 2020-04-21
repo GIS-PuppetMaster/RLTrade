@@ -48,8 +48,8 @@ if not os.path.exists(checkpointPath):
     os.makedirs(checkpointPath)
 checkPointCallback = CheckpointCallback(save_freq=10 * EP_LEN, save_path=checkpointPath)
 # policy_args = dict(net_arch=[128, 256, dict(vf=[64], pi=[64])])
-policy_args = dict(net_arch=[dict(vf=[128, 256, 64], pi=[128, 256, 64])])
-model = TRPO(MlpPolicy, env, verbose=1, tensorboard_log="./log/", seed=0)
+policy_args = dict(net_arch=[dict(vf=[128, 256, 256, 256, 64], pi=[128, 256, 256, 256, 64])])
+model = TRPO(MlpPolicy, env, verbose=1, tensorboard_log="./log/", seed=0, policy_kwargs=policy_args)
 model.learn(total_timesteps=episode * EP_LEN, callback=[monitorCallback, checkPointCallback])
 model.save("./model")
 
