@@ -65,7 +65,7 @@ def get_indicator(raw):
         else:
             raise Exception("不支持的参数个数")
         raw = pd.concat([raw, temp], axis=1)
-        return raw
+    return raw
 
 
 for stock in stock_list:

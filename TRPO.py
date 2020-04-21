@@ -16,7 +16,7 @@ EP_LEN = 250 * 3
 FILE_TAG = "TRPO"
 mode = "train"
 n_training_envs = 1
-
+stock_code = '601318_XSHG'
 
 def post_processor(state):
     return log10plus1R(state) / 10
@@ -24,7 +24,7 @@ def post_processor(state):
 
 def make_env():
     env = TradeEnv(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
-                   start_episode=0, episode_len=EP_LEN, stock_code='000938_XSHE',
+                   start_episode=0, episode_len=EP_LEN, stock_code=stock_code,
                    result_path="E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/",
                    stock_data_path='./Data/train/',
                    poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor)
@@ -56,7 +56,7 @@ model.save("./model")
 model = TRPO.load('./model_old_stable.zip')
 mode = 'test'
 env = TradeEnv(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
-               start_episode=0, episode_len=EP_LEN, stock_code='000938_XSHE',
+               start_episode=0, episode_len=EP_LEN, stock_code=stock_code,
                result_path="E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/",
                stock_data_path='./Data/test/',
                poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor)
