@@ -35,7 +35,7 @@ def make_env():
 env = DummyVecEnv([make_env for _ in range(n_training_envs)])
 del_file('E:\运行结果\TRPO\TRPO/train')
 monitorCallback = CustomCallback()
-checkpointPath = './checkpoints/large_net'
+checkpointPath = './checkpoints/large_net_601318'
 if os.path.exists(checkpointPath):
     com = input("checkpoint目录：" + checkpointPath + " 已经存在，是否清空[y/n]")
     if com == 'y':

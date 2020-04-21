@@ -224,6 +224,7 @@ class TradeEnv(gym.Env):
         raw = pd.read_csv(self.stock_data_path + self.stock_code + '_with_indicator.csv', index_col=False)
         raw = raw.dropna(axis=1, how='any')
         data = np.array(raw)
+        data = fill_inf(data)
         res = {}
         time_list = []
         for i in range(0, data.shape[0]):

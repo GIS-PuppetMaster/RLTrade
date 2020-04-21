@@ -27,3 +27,16 @@ def del_file(path_data):
 def gelu(input_tensor):
     cdf = 0.5 * (1.0 + tf.erf(input_tensor / tf.sqrt(2.0)))
     return input_tensor * cdf
+
+
+def fill_inf(t1):
+    for i in range(t1.shape[1]):  # 遍历每一列（每一列中的nan替换成该列的均值）
+        temp_col = t1[:, i]  # 当前的一列
+        nan_num = np.count_nonzero(temp_col != temp_col)
+        if nan_num != 0:  # 不为0，说明当前这一列中有nan
+            temp_not_nan_col = temp_col[temp_col == temp_col]  # 去掉nan的ndarray
+
+            # 选中当前为nan的位置，把值赋值为不为nan的均值
+            temp_col[np.isnan(temp_col)] = temp_not_nan_col.mean()  # mean()表示求均值。
+    return t1
+
