@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 # stock_list = ['000938_XSHE', '601318_XSHG', '601336_XSHG', '601601_XSHG', '601628_XSHG']
-stock_list = ['000938_XSHE']
+stock_list = ['601318_XSHG']
 indicators = [
     ('RSI', rsi, ['close']),
     ('MFI', money_flow_index, ['high', 'low', 'close', 'volume']),
