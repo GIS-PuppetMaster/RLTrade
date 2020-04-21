@@ -29,14 +29,16 @@ def gelu(input_tensor):
     return input_tensor * cdf
 
 
-def fill_inf(t1):
-    for i in range(t1.shape[1]):  # 遍历每一列（每一列中的nan替换成该列的均值）
-        temp_col = t1[:, i]  # 当前的一列
-        nan_num = np.count_nonzero(temp_col != temp_col)
-        if nan_num != 0:  # 不为0，说明当前这一列中有nan
-            temp_not_nan_col = temp_col[temp_col == temp_col]  # 去掉nan的ndarray
-
-            # 选中当前为nan的位置，把值赋值为不为nan的均值
-            temp_col[np.isnan(temp_col)] = temp_not_nan_col.mean()  # mean()表示求均值。
-    return t1
+def fill_inf(array):
+    for i in range(array.shape[1]):  # 遍历每一列（每一列中的nan替换成该列的均值）
+        # 跳过日期
+        if i==0:
+            continue
+        temp_col = array[:, i]  # 当前的一列
+        mean = np.mean(temp_col[~np.isinf(temp_col.astype(np.float))])
+        for j in range(array.shape[0]):
+            value = float(temp_col[j])
+            if np.isinf(value):
+                array[j,i]=mean
+    return array
 
