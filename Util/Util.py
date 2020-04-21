@@ -19,8 +19,9 @@ def del_file(path_data):
                 os.remove(file_data)
             else:
                 del_file(file_data)
+        return True
     except:
-        pass
+        return False
 
 
 def gelu(input_tensor):

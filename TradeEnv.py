@@ -16,7 +16,7 @@ import numpy as np
 class TradeEnv(gym.Env):
     def __init__(self, stock_data_path, start_episode=0, episode_len=720, obs_time_size='60 day',
                  obs_delta_frequency='1 day',
-                 sim_delta_time='1 min', max_episode_days=None, stock_code='000938_XSHE',
+                 sim_delta_time='1 min', stock_code='000938_XSHE',
                  result_path="E:/运行结果/train/", principal=1e5, origin_stock_amount=0, poundage_rate=5e-3,
                  time_format="%Y-%m-%d", auto_open_result=False, reward_verbose=1,
                  post_processor=None, start_index_bound=None, end_index_bound=None, trade_time='open'):

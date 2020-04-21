@@ -9,6 +9,7 @@ from stable_baselines.common.callbacks import CheckpointCallback
 from stable_baselines.sac.policies import MlpPolicy as SACMlpPolicy
 from stable_baselines.ddpg.policies import MlpPolicy as DDPGMlpPolicy
 from stable_baselines.td3.policies import MlpPolicy as TD3MlpPolicy
+import sys
 
 episode = 2500
 EP_LEN = 250 * 3
@@ -26,8 +27,7 @@ def make_env():
                    start_episode=0, episode_len=EP_LEN, stock_code='000938_XSHE',
                    result_path="E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/",
                    stock_data_path='./Data/train/',
-                   poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor,
-                   max_episode_days=EP_LEN)
+                   poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor)
     check_env(env)
     return env
 
@@ -35,8 +35,20 @@ def make_env():
 env = DummyVecEnv([make_env for _ in range(n_training_envs)])
 del_file('E:\运行结果\TRPO\TRPO/train')
 monitorCallback = CustomCallback()
-checkPointCallback = CheckpointCallback(save_freq=10 * EP_LEN, save_path='./checkpoints')
-policy_args = dict(net_arch=[64, 128, dict(vf=[64], pi=[64])])
+checkpointPath = './checkpoints/large_net'
+if os.path.exists(checkpointPath):
+    com = input("checkpoint目录：" + checkpointPath + " 已经存在，是否清空[y/n]")
+    if com == 'y':
+        if del_file(checkpointPath):
+            print("清空成功")
+        else:
+            print("清空失败")
+            sys.exit()
+if not os.path.exists(checkpointPath):
+    os.makedirs(checkpointPath)
+checkPointCallback = CheckpointCallback(save_freq=10 * EP_LEN, save_path=checkpointPath)
+# policy_args = dict(net_arch=[128, 256, dict(vf=[64], pi=[64])])
+policy_args = dict(net_arch=[dict(vf=[128, 256, 64], pi=[128, 256, 64])])
 model = TRPO(MlpPolicy, env, verbose=1, tensorboard_log="./log/", seed=0)
 model.learn(total_timesteps=episode * EP_LEN, callback=[monitorCallback, checkPointCallback])
 model.save("./model")
@@ -47,8 +59,7 @@ env = TradeEnv(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_ti
                start_episode=0, episode_len=EP_LEN, stock_code='000938_XSHE',
                result_path="E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/",
                stock_data_path='./Data/test/',
-               poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor,
-               max_episode_days=EP_LEN)
+               poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor)
 env.seed(0)
 env = env.unwrapped
 env.result_path = "E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/"

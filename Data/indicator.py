@@ -45,29 +45,35 @@ indicators = [
     ('DR', daily_return, ['close']),
     ('DLR', daily_log_return, ['close'])
 ]
+
+
+def get_indicator(raw):
+    for indicator_name, fun, col_name in indicators:
+        print(indicator_name)
+        if len(col_name) == 1:
+            temp = fun(raw[col_name[0]]).to_frame()
+            temp.columns = [indicator_name]
+        elif len(col_name) == 2:
+            temp = fun(raw[col_name[0]], raw[col_name[1]]).to_frame()
+            temp.columns = [indicator_name]
+        elif len(col_name) == 3:
+            temp = fun(raw[col_name[0]], raw[col_name[1]], raw[col_name[2]]).to_frame()
+            temp.columns = [indicator_name]
+        elif len(col_name) == 4:
+            temp = fun(raw[col_name[0]], raw[col_name[1]], raw[col_name[2]], raw[col_name[3]]).to_frame()
+            temp.columns = [indicator_name]
+        else:
+            raise Exception("不支持的参数个数")
+        raw = pd.concat([raw, temp], axis=1)
+        return raw
+
+
 for stock in stock_list:
     mode = ['train', 'test']
     for m in mode:
-        raw = pd.read_csv('./'+m + '/' + stock + '_day.csv')
+        raw = pd.read_csv('./' + m + '/' + stock + '_day.csv')
         print("stock:" + stock)
-
-        for indicator_name, fun, col_name in indicators:
-            print(indicator_name)
-            if len(col_name) == 1:
-                temp = fun(raw[col_name[0]]).to_frame()
-                temp.columns = [indicator_name]
-            elif len(col_name) == 2:
-                temp = fun(raw[col_name[0]], raw[col_name[1]]).to_frame()
-                temp.columns = [indicator_name]
-            elif len(col_name) == 3:
-                temp = fun(raw[col_name[0]], raw[col_name[1]], raw[col_name[2]]).to_frame()
-                temp.columns = [indicator_name]
-            elif len(col_name) == 4:
-                temp = fun(raw[col_name[0]], raw[col_name[1]], raw[col_name[2]], raw[col_name[3]]).to_frame()
-                temp.columns = [indicator_name]
-            else:
-                raise Exception("不支持的参数个数")
-            raw = pd.concat([raw, temp], axis=1)
+        raw = get_indicator(raw)
         print("----fillna----")
         raw.index = list(raw['Unnamed: 0'])
         raw.pop('Unnamed: 0')
@@ -81,6 +87,4 @@ for stock in stock_list:
         # # data = np.concatenate((ochlvm, indicator), axis=-1)
         # data = pd.DataFrame(data, index=index, columns=raw.columns)
         print(raw.values.shape)
-        raw.to_csv('./'+m + '/' + stock + '_with_indicator.csv')
-
-
+        raw.to_csv('./' + m + '/' + stock + '_with_indicator.csv')
