@@ -8,7 +8,7 @@ from ta.volume import *
 from ta.others import *
 import pandas as pd
 import numpy as np
-stock_code = '000938.XSHE'
+stock_code = '601628.XSHG'
 indicators = [
     ('RSI', rsi, ['close']),
     ('MFI', money_flow_index, ['high', 'low', 'close', 'volume']),
@@ -46,7 +46,8 @@ indicators = [
     ('DR', daily_return, ['close']),
     ('DLR', daily_log_return, ['close'])
 ]
-net_type = 'large_net'
+net_type = 'large_net_601628'
+skip_suspended = True
 
 
 def get_indicator(raw):
@@ -103,11 +104,11 @@ def before_trading(context):
 
 def handle_bar(context, bar):
     # 获取datetime, open,high,low,close,money，不包括当天数据
-    price = history_bars(context.stock_code, 120, '1d', include_now=False, skip_suspended=True)
+    price = history_bars(context.stock_code, 120, '1d', include_now=False, skip_suspended=skip_suspended)
     # 剔除datetime
     price = pd.DataFrame(price).values[:, 1:]
     # 获取volume
-    volume = history_bars(context.stock_code, 120, '1d', 'total_turnover', include_now=False, skip_suspended=True)
+    volume = history_bars(context.stock_code, 120, '1d', 'total_turnover', include_now=False, skip_suspended=skip_suspended)
     # 拼接volume：open,high,low,close,volume,money
     price = np.insert(price, 4, volume, axis=1)
     # 调整顺序为open,low,high,close,volume,money
