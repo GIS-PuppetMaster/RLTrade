@@ -5,6 +5,7 @@ from Util.Util import *
 import os
 import seaborn as sns
 import matplotlib.pyplot as plt
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 episode = 2500
 EP_LEN = 250 * 3
@@ -28,11 +29,11 @@ for filename in file_list:
         max_index = index
         max_file_name = filename
 # max_file_name = 'rl_model_659456_steps.zip'
-model = TRPO.load('./checkpoints/' + net_type + '/' + max_file_name)
+model = TRPO.load('./checkpoints/' + net_type + '/' + max_file_name,policy_kwargs=dict(net_arch=[dict(vf=[256, 128, 64], pi=[256, 128, 64])]))
 mode = 'test'
 
 env = TradeEnv(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
-               start_episode=0, episode_len=EP_LEN, stock_code=stock_code,
+               start_episode=0, episode_len=EP_LEN, stock_codes=stock_code,
                result_path="E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/",
                stock_data_path='./Data/test/',
                poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor)

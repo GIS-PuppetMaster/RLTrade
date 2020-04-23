@@ -16,7 +16,7 @@ import numpy as np
 class TradeEnv(gym.Env):
     def __init__(self, stock_data_path, start_episode=0, episode_len=720, obs_time_size='60 day',
                  obs_delta_frequency='1 day',
-                 sim_delta_time='1 min', stock_code='000938_XSHE',
+                 sim_delta_time='1 min', stock_codes='000938_XSHE',
                  result_path="E:/运行结果/train/", principal=1e5, origin_stock_amount=0, poundage_rate=5e-3,
                  time_format="%Y-%m-%d", auto_open_result=False, reward_verbose=1,
                  post_processor=None, start_index_bound=None, end_index_bound=None, trade_time='open'):
@@ -25,7 +25,7 @@ class TradeEnv(gym.Env):
                 :param episode_len: episode长度
                 :param sim_delta_time: 最小交易频率('x min')
                 :param draw_frequency: render模式的绘制频率(step/次)
-                :param stock_code: 股票代码
+                :param stock_codes: 股票代码
                 :param stock_data_path: 数据路径
                 :param result_path: 绘图结果保存路径
                 :param principal: 初始资金
@@ -42,9 +42,8 @@ class TradeEnv(gym.Env):
         super(TradeEnv, self).__init__()
         self.delta_time_size = sim_delta_time
         self.delta_time = int(sim_delta_time[0:-4])
-        self.stock_code = stock_code
+        self.stock_codes = stock_codes
         self.stock_data_path = stock_data_path
-        self.stock_code = stock_code
         self.result_path = result_path
         self.principal = principal
         self.origin_stock_amount = origin_stock_amount
@@ -53,17 +52,14 @@ class TradeEnv(gym.Env):
         self.auto_open_result = auto_open_result
         self.episode = start_episode
         self.episode_len = episode_len
-        self.stock_data, self.keys = self.read_stock_data()
-        self.end_time = list(self.stock_data.keys())[-1]
+        self.stock_datas = {stock_code: self.read_stock_data(stock_code) for stock_code in self.stock_codes}
         self.reward_verbose = reward_verbose
         self.obs_time = int(obs_time_size[0:-4])
         self.obs_delta_frequency = int(obs_delta_frequency[0:-4])
         self.action_space = spaces.Box(low=np.array([-1]), high=np.array([1]))
         self.observation_space = spaces.Box(
-            low=np.array([[float('-inf') for _ in range(26)]
-                          for _ in range(self.obs_time // self.obs_delta_frequency)]),
-            high=np.array([[float('inf') for _ in range(26)]
-                           for _ in range(0, self.obs_time // self.obs_delta_frequency)]))
+            low=np.array([float('-inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency))] + [0, 0]),
+            high=np.array([float('inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency)+2)]))
         self.step_ = 0
         self.his_reward = []
         self.post_processor = post_processor
@@ -74,15 +70,17 @@ class TradeEnv(gym.Env):
             assert self.start_index_bound <= start_index_bound
             self.start_index_bound = start_index_bound
 
-        if end_index_bound is None:
-            self.end_index_bound = len(self.stock_data) - 10
-        else:
-            self.end_index_bound = end_index_bound
 
     def seed(self, seed=None):
         np.random.seed(seed)
 
     def reset(self):
+        # 随机选择一只股票
+        self.stock_code = np.random.choice(self.stock_codes)
+        # 读取预存的数据
+        self.stock_data, self.keys = self.stock_datas[self.stock_code]
+        # 设置终止边界
+        self.end_index_bound = len(self.stock_data) - 10
         # 随机初始化时间
         self.current_time = \
             np.random.choice(np.array(list(self.stock_data.keys()))[self.start_index_bound:self.end_index_bound], 1)[0]
@@ -181,6 +179,11 @@ class TradeEnv(gym.Env):
         return last_value
 
     def get_reward(self):
+        # # 检验过去20个step是否一直交易量为0
+        # if len(self.trade_history) > 20:
+        #     his = np.array(self.trade_history)
+        #     if his[-21:-1, 2] == 0:
+        #         return -1
         now_hist = self.trade_history[-1]
         now_value = self.get_value(now_hist)
         now_price = now_hist[1]
@@ -220,8 +223,8 @@ class TradeEnv(gym.Env):
         else:
             self.done = True
 
-    def read_stock_data(self):
-        raw = pd.read_csv(self.stock_data_path + self.stock_code + '_with_indicator.csv', index_col=False)
+    def read_stock_data(self, stock_code):
+        raw = pd.read_csv(self.stock_data_path + stock_code + '_with_indicator.csv', index_col=False)
         raw = raw.dropna(axis=1, how='any')
         data = np.array(raw)
         data = fill_inf(data)
@@ -252,6 +255,8 @@ class TradeEnv(gym.Env):
                 self.done = True
         stock_state = np.flip(stock_state, axis=0)
         state = stock_state.astype(np.float32)
+        state = state.flatten()
+        state = np.append(state, np.array([self.money, self.stock_amount]))
         if self.post_processor is not None:
             state = self.post_processor(state)
         return state

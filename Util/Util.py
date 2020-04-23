@@ -4,11 +4,17 @@ import numpy as np
 
 
 def log2plus1R(x):
-    return np.sign(x) * np.log2(np.abs(x + 1))
+    x = np.sign(x) * np.log2(np.abs(x + np.sign(x)))
+    x[np.isnan(x)] = 0
+    x[np.isinf(x)] = 0
+    return x
 
 
 def log10plus1R(x):
-    return np.sign(x) * np.log10(np.abs(x + 1))
+    x = np.sign(x) * np.log10(np.abs(x + np.sign(x)))
+    x[np.isnan(x)] = 0
+    x[np.isinf(x)] = 0
+    return x
 
 
 def del_file(path_data):
