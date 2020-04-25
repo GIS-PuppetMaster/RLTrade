@@ -34,7 +34,7 @@ env = TradeEnv(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_ti
                start_episode=0, episode_len=EP_LEN, stock_codes=stock_code,
                result_path="E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/",
                stock_data_path='./Data/test/',
-               poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor)
+               poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor, end_index_bound=-10)
 env.seed(0)
 env = env.unwrapped
 env.result_path = "E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/"

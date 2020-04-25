@@ -14,7 +14,7 @@ from sklearn.preprocessing import StandardScaler
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-stock_code = '000938_XSHE'
+stock_code = '000001_XSHE'
 stock_code = stock_code.replace("_", ".")
 indicators = [
     ('RSI', rsi, ['close']),

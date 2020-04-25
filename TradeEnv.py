@@ -19,7 +19,7 @@ class TradeEnv(gym.Env):
                  sim_delta_time='1 day', stock_codes='000938_XSHE',
                  result_path="E:/运行结果/train/", principal=1e5, origin_stock_amount=0, poundage_rate=5e-3,
                  time_format="%Y-%m-%d", auto_open_result=False, reward_verbose=1,
-                 post_processor=None, start_index_bound=None, trade_time='open'):
+                 post_processor=None, start_index_bound=None, end_index_bound=None, trade_time='open'):
         """
                 :param episode: 起始episode
                 :param episode_len: episode长度
@@ -58,7 +58,7 @@ class TradeEnv(gym.Env):
         self.action_space = spaces.Box(low=np.array([-1]), high=np.array([1]))
         self.observation_space = spaces.Box(
             low=np.array([float('-inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency))] + [0, 0]),
-            high=np.array([float('inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency)+2)]))
+            high=np.array([float('inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency) + 2)]))
         self.step_ = 0
         self.post_processor = post_processor
         assert trade_time == "open" or trade_time == "close"
@@ -67,8 +67,7 @@ class TradeEnv(gym.Env):
         if start_index_bound is not None:
             assert self.start_index_bound <= start_index_bound
             self.start_index_bound = start_index_bound
-
-
+        self.customize_end_index_bound = end_index_bound
     def seed(self, seed=None):
         np.random.seed(seed)
 
@@ -78,7 +77,11 @@ class TradeEnv(gym.Env):
         # 读取预存的数据
         self.stock_data, self.keys = self.stock_datas[self.stock_code]
         # 设置终止边界
-        self.end_index_bound = len(self.stock_data) - self.episode_len
+        if self.customize_end_index_bound is not None:
+            self.end_index_bound = len(self.stock_data) + self.customize_end_index_bound
+        else:
+            self.end_index_bound = len(self.stock_data) - self.episode_len
+        assert self.start_index_bound < self.end_index_bound
         # 随机初始化时间
         self.current_time = \
             np.random.choice(np.array(list(self.stock_data.keys()))[self.start_index_bound:self.end_index_bound], 1)[0]
