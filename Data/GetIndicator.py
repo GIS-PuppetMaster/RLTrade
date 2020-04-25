@@ -67,8 +67,9 @@ def get_indicator(raw):
         raw = pd.concat([raw, temp], axis=1)
     raw.index = list(raw['Unnamed: 0'])
     raw.pop('Unnamed: 0')
-    raw.fillna(method='ffill', inplace=True)
-    raw.fillna(raw.mean(), inplace=True)
+    raw.dropna()
+    # raw.fillna(method='ffill', inplace=True)
+    # raw.fillna(raw.mean(), inplace=True)
     return raw
 
 def get_and_save_indicator(stock_list):
@@ -93,5 +94,3 @@ def get_and_save_indicator(stock_list):
             # data = pd.DataFrame(data, index=index, columns=raw.columns)
             # print(raw.values.shape)
             raw.to_csv('./' + m + '/' + stock + '_with_indicator.csv')
-if __name__ == '__main__':
-    get_and_save_indicator(['000938_XSHE'])

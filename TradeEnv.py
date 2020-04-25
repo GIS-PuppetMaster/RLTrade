@@ -16,10 +16,10 @@ import numpy as np
 class TradeEnv(gym.Env):
     def __init__(self, stock_data_path, start_episode=0, episode_len=720, obs_time_size='60 day',
                  obs_delta_frequency='1 day',
-                 sim_delta_time='1 min', stock_codes='000938_XSHE',
+                 sim_delta_time='1 day', stock_codes='000938_XSHE',
                  result_path="E:/运行结果/train/", principal=1e5, origin_stock_amount=0, poundage_rate=5e-3,
                  time_format="%Y-%m-%d", auto_open_result=False, reward_verbose=1,
-                 post_processor=None, start_index_bound=None, end_index_bound=None, trade_time='open'):
+                 post_processor=None, start_index_bound=None, trade_time='open'):
         """
                 :param episode: 起始episode
                 :param episode_len: episode长度
@@ -40,7 +40,6 @@ class TradeEnv(gym.Env):
                 :return:
                 """
         super(TradeEnv, self).__init__()
-        self.delta_time_size = sim_delta_time
         self.delta_time = int(sim_delta_time[0:-4])
         self.stock_codes = stock_codes
         self.stock_data_path = stock_data_path
@@ -61,11 +60,10 @@ class TradeEnv(gym.Env):
             low=np.array([float('-inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency))] + [0, 0]),
             high=np.array([float('inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency)+2)]))
         self.step_ = 0
-        self.his_reward = []
         self.post_processor = post_processor
         assert trade_time == "open" or trade_time == "close"
         self.trade_time = trade_time
-        self.start_index_bound = self.obs_time + 1
+        self.start_index_bound = self.obs_time
         if start_index_bound is not None:
             assert self.start_index_bound <= start_index_bound
             self.start_index_bound = start_index_bound
@@ -80,7 +78,7 @@ class TradeEnv(gym.Env):
         # 读取预存的数据
         self.stock_data, self.keys = self.stock_datas[self.stock_code]
         # 设置终止边界
-        self.end_index_bound = len(self.stock_data) - 10
+        self.end_index_bound = len(self.stock_data) - self.episode_len
         # 随机初始化时间
         self.current_time = \
             np.random.choice(np.array(list(self.stock_data.keys()))[self.start_index_bound:self.end_index_bound], 1)[0]
@@ -95,13 +93,11 @@ class TradeEnv(gym.Env):
         self.trade_history = []
         self.episode += 1
         self.step_ = 0
-        self.profit_list = []
-        self.next_day_counter = 0
         self.start_time = self.current_time
         return self.get_state()
 
     def step(self, action):
-        if self.step_ >= self.episode_len - 1:
+        if self.step_ >= self.episode_len:
             self.done = True
         self.step_ += 1
         quant = 0
@@ -197,6 +193,7 @@ class TradeEnv(gym.Env):
                 last_price = self.stock_data[self.start_time][1]
             elif self.trade_time == 'open':
                 last_price = self.stock_data[self.start_time][0]
+            last_value += self.origin_stock_amount * last_price
         if last_value == 0:
             last_value = self.principal
         reward = (((now_value - last_value) / last_value) - ((now_price - last_price) / last_price)) * 100
@@ -211,8 +208,8 @@ class TradeEnv(gym.Env):
             return self.draw()
 
     def get_last_time(self):
-        assert self.index - self.delta_time >= 0
-        index = self.index - self.delta_time
+        assert self.index - 1 >= 0
+        index = self.index - 1
         return self.keys[index], index
 
     def set_next_day(self):
@@ -225,7 +222,7 @@ class TradeEnv(gym.Env):
 
     def read_stock_data(self, stock_code):
         raw = pd.read_csv(self.stock_data_path + stock_code + '_with_indicator.csv', index_col=False)
-        raw = raw.dropna(axis=1, how='any')
+        raw = raw.dropna(axis=0, how='any')
         data = np.array(raw)
         data = fill_inf(data)
         res = {}
@@ -245,7 +242,7 @@ class TradeEnv(gym.Env):
         if time is None:
             self.done = True
             return None
-        for _ in range(int(self.obs_time / self.obs_delta_frequency)):
+        for _ in range(self.obs_time // self.obs_delta_frequency):
             stock_state.append(self.stock_data[time].tolist())
             index -= self.obs_delta_frequency
             if index >= 0:

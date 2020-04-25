@@ -99,7 +99,7 @@ def init(context):
         if index > max_index:
             max_index = index
             max_file_name = filename
-    # max_file_name = 'rl_model_15554560_steps.zip'
+    max_file_name = 'rl_model_28304384_steps'
     model_path = os.path.join(os.path.dirname(strategy_file_path), "./checkpoints/" + net_type + "/" + max_file_name)
     logger.info('model_path:' + model_path)
     model = TRPO.load(model_path, policy=CustomPolicy,
@@ -174,11 +174,11 @@ __config__ = {
         "start_date": "2017-01-03",
         "end_date": "2020-04-21",
         "frequency": "1d",
-        "matching_type": "current_bar",
+        "matching_type": "next_bar",
         "benchmark": stock_code,
         "accounts": {
             "stock": 100000
-        }
+        },
     },
     "extra": {
         "log_level": "verbose",
