@@ -1,7 +1,8 @@
 import os
 import tensorflow.compat.v1 as tf
 import numpy as np
-
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
 
 def log2plus1R(x):
     x = np.sign(x) * np.log2(np.abs(x + np.sign(x)))
@@ -15,6 +16,15 @@ def log10plus1R(x):
     x[np.isnan(x)] = 0
     x[np.isinf(x)] = 0
     return x
+
+def post_processor(state):
+    price = state[0:-2]
+    s = state[-2:]
+    price = price.reshape(60, 26)
+    price = scaler.fit_transform(price)
+    s = log10plus1R(s) / 10
+    # return log10plus1R(state) / 10
+    return np.append(price.flatten(), s)
 
 
 def del_file(path_data):

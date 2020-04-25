@@ -10,7 +10,12 @@ import pandas as pd
 import numpy as np
 from Util.CustomPolicy import CustomPolicy
 from Util.Util import *
-stock_code = '601628.XSHG'
+from sklearn.preprocessing import StandardScaler
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+stock_code = '000938_XSHE'
+stock_code = stock_code.replace("_", ".")
 indicators = [
     ('RSI', rsi, ['close']),
     ('MFI', money_flow_index, ['high', 'low', 'close', 'volume']),
@@ -48,7 +53,7 @@ indicators = [
     ('DR', daily_return, ['close']),
     ('DLR', daily_log_return, ['close'])
 ]
-net_type = 'small_net_triple_regularize'
+net_type = 'small_net_5stocks_regularize_StandardScaler'
 skip_suspended = True
 
 
@@ -94,12 +99,14 @@ def init(context):
         if index > max_index:
             max_index = index
             max_file_name = filename
-    # max_file_name = 'rl_model_1739776_steps.zip'
+    # max_file_name = 'rl_model_15554560_steps.zip'
     model_path = os.path.join(os.path.dirname(strategy_file_path), "./checkpoints/" + net_type + "/" + max_file_name)
     logger.info('model_path:' + model_path)
-    model = TRPO.load(model_path, policy=CustomPolicy)
+    model = TRPO.load(model_path, policy=CustomPolicy,
+                      policy_kwargs=dict(act_fun=gelu))
     context.model = model
     context.stock_code = stock_code
+    context.scaler = StandardScaler()
 
 
 def before_trading(context):
@@ -116,19 +123,20 @@ def handle_bar(context, bar):
                           skip_suspended=skip_suspended)
     # 拼接volume：open,high,low,close,volume,money
     price = np.insert(price, 4, volume, axis=1)
-    # 调整顺序为open,low,high,close,volume,money
+    # 调整顺序为open,close,high,low,volume,money
     price = np.insert(price[:, [0, 1, 2, 4, 5]], 1, price[:, 3], axis=1)
     df = pd.DataFrame(price, columns=['open', 'close', 'high', 'low', 'volume', 'money'])
     # 使用ta计算指标并取最近60天
     s_raw = get_indicator(df).values[-61:-1, :]
-    # 归一化
-    s = s_raw.flatten()
+    s = context.scaler.fit_transform(s_raw)
+    s = s.flatten()
     # 获取当前股数
     stock_amount = get_position(context.stock_code).closable
     # 获取资金
     money = context.portfolio.cash
-    s = np.append(s, np.array([money, stock_amount]))
-    s = log10plus1R(s)
+    s = np.append(s, log10plus1R(np.array([money, stock_amount])) / 10)
+    # 归一化
+    # s = log10plus1R(s)/10
     # 预测
     # s = s[:-2].reshape([60, 26])
     action = context.model.predict(s)[0]
@@ -164,7 +172,7 @@ def handle_bar(context, bar):
 __config__ = {
     "base": {
         "start_date": "2017-01-03",
-        "end_date": "2018-02-07",
+        "end_date": "2020-04-21",
         "frequency": "1d",
         "matching_type": "current_bar",
         "benchmark": stock_code,

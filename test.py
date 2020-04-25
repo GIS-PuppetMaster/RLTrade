@@ -12,14 +12,12 @@ EP_LEN = 250 * 3
 FILE_TAG = "TRPO"
 mode = "train"
 n_training_envs = 1
-stock_code = '601628_XSHG'
+stock_code = ['000938_XSHE', '601318_XSHG', '601628_XSHG', '002049_XSHE', '000001_XSHE']
 
 
-def post_processor(state):
-    return log10plus1R(state) / 10
 
 
-net_type = 'large_net_601628'
+net_type = 'small_net_5stocks_regularize_StandardScaler'
 file_list = os.listdir('./checkpoints/' + net_type)
 max_index = -1
 max_file_name = ''
@@ -29,7 +27,7 @@ for filename in file_list:
         max_index = index
         max_file_name = filename
 # max_file_name = 'rl_model_659456_steps.zip'
-model = TRPO.load('./checkpoints/' + net_type + '/' + max_file_name,policy_kwargs=dict(net_arch=[dict(vf=[256, 128, 64], pi=[256, 128, 64])]))
+model = TRPO.load('./checkpoints/' + net_type + '/' + max_file_name, policy_kwargs=dict(act_fun=gelu))
 mode = 'test'
 
 env = TradeEnv(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
@@ -43,7 +41,7 @@ env.result_path = "E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/"
 profit = []
 base = []
 ep = 0
-while ep < 50:
+while ep < 100:
     print(ep)
     s = env.reset()
     flag = False
