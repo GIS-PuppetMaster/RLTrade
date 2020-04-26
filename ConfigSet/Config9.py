@@ -2,25 +2,30 @@ import wandb
 from Util.Util import *
 from copy import deepcopy
 import os
+import tensorflow as tf
 
-GPU = "-1"
+GPU = "0"
 os.environ["CUDA_VISIBLE_DEVICES"] = GPU
-policy_args = dict(act_fun=gelu, net_arch=[dict(vf=[256, 128, 64], pi=[256, 128, 64])], l2_scale=0.01)
+policy_args = dict(act_fun=gelu, net_arch=[dict(vf=[64, 64], pi=[64, 64])], l2_scale=0.01)
 agent_state = False
 episode = 50000
 EP_LEN = 250 * 3
 n_training_envs = 1
+save_freq = EP_LEN * 20
+eval_freq = EP_LEN * 20
 agent_config = deepcopy(policy_args)
-act = agent_config['act_fun']
-agent_config['act_fun'] = act.__name__
-agent_config['agent_state'] = agent_state
+agent_config['act_fun'] = agent_config['act_fun'].__name__
+agent_config['net_arch'] = str(agent_config['net_arch']).replace("\"","").replace("\'","")
+agent_config['agent_state'] = str(agent_state)
 agent_config['episode'] = episode
 agent_config['EP_LEN'] = EP_LEN
 agent_config['n_training_envs'] = n_training_envs
 agent_config['GPU'] = GPU
+agent_config['save_freq'] = save_freq
+agent_config['eval_freq'] = eval_freq
 net_type = str(agent_config).replace(":", "-").replace("'", "").replace("{", "").replace("}", "").replace("[",
                                                                                                           "").replace(
-    "]", "").replace(",", "_").replace(" ","")
+    "]", "").replace(",", "_").replace(" ", "")
 train_env_config = dict(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
                         start_episode=0, episode_len=EP_LEN,
                         stock_codes=['000938_XSHE', '601318_XSHG', '601628_XSHG', '002049_XSHE',
@@ -44,5 +49,5 @@ config = dict(train_env_config=train_env_config_, eval_env_config=eval_env_confi
 
 
 def init_wandb():
-    wandb.login()
     wandb.init(project='Stable-BaselineTrading', sync_tensorboard=True, config=config, name=net_type)
+

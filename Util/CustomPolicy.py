@@ -44,7 +44,7 @@ class CustomPolicy(ActorCriticPolicy):
 
             vf_h = extracted_features
             for i, layer_size in enumerate(vf_layer_size):
-                vf_h = activ(tf.layers.dense(vf_h, layer_size, name='vf_fc' + str(i), kernel_regularizer=tf.contrib.layers.l2_regularizer(0.01)))
+                vf_h = activ(tf.layers.dense(vf_h, layer_size, name='vf_fc' + str(i), kernel_regularizer=tf.contrib.layers.l2_regularizer(l2_scale)))
             value_fn = tf.layers.dense(vf_h, 1, name='vf')
             vf_latent = vf_h
 
