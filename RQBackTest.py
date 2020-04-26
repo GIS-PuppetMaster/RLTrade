@@ -1,5 +1,4 @@
 # coding=utf-8
-from rqalpha.api import *
 from stable_baselines import TRPO
 from ta.momentum import *
 from ta.volatility import *
@@ -7,14 +6,12 @@ from ta.trend import *
 from ta.volume import *
 from ta.others import *
 import pandas as pd
-import numpy as np
 from Util.CustomPolicy import CustomPolicy
-from Util.Util import *
+from Config import *
 from sklearn.preprocessing import StandardScaler
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-stock_code = '000001_XSHE'
+stock_code = '000938_XSHE'
 stock_code = stock_code.replace("_", ".")
 indicators = [
     ('RSI', rsi, ['close']),
@@ -53,7 +50,6 @@ indicators = [
     ('DR', daily_return, ['close']),
     ('DLR', daily_log_return, ['close'])
 ]
-net_type = 'small_net_5stocks_regularize_StandardScaler'
 skip_suspended = True
 
 
@@ -85,12 +81,11 @@ def read_csv_as_df(path):
 
 
 def init(context):
-    import os
     # strategy_file_path = context.config.base.strategy_file
     # csv_path = os.path.join(os.path.dirname(strategy_file_path), "./Data/test/000938_XSHE_day.csv")
     # context.XSHE000938_df = read_csv_as_df(csv_path)
     import os
-    strategy_file_path = context.config.base.strategy_file
+    strategy_file_path = context.agent_config.base.strategy_file
     file_list = os.listdir(os.path.join(os.path.dirname(strategy_file_path), './checkpoints/' + net_type + '/'))
     max_index = -1
     max_file_name = ''
@@ -99,11 +94,12 @@ def init(context):
         if index > max_index:
             max_index = index
             max_file_name = filename
-    max_file_name = 'rl_model_28304384_steps'
+    # max_file_name = 'rl_model_15779840_steps'
     model_path = os.path.join(os.path.dirname(strategy_file_path), "./checkpoints/" + net_type + "/" + max_file_name)
+    # model_path = os.path.join(os.path.dirname(strategy_file_path), "./BestModels/" + net_type + "/" + "best_model.zip")
     logger.info('model_path:' + model_path)
     model = TRPO.load(model_path, policy=CustomPolicy,
-                      policy_kwargs=dict(act_fun=gelu))
+                      policy_kwargs=policy_args)
     context.model = model
     context.stock_code = stock_code
     context.scaler = StandardScaler()
@@ -127,14 +123,15 @@ def handle_bar(context, bar):
     price = np.insert(price[:, [0, 1, 2, 4, 5]], 1, price[:, 3], axis=1)
     df = pd.DataFrame(price, columns=['open', 'close', 'high', 'low', 'volume', 'money'])
     # 使用ta计算指标并取最近60天
-    s_raw = get_indicator(df).values[-61:-1, :]
+    s_raw = get_indicator(df).values[-60:, :]
     s = context.scaler.fit_transform(s_raw)
     s = s.flatten()
     # 获取当前股数
     stock_amount = get_position(context.stock_code).closable
     # 获取资金
     money = context.portfolio.cash
-    s = np.append(s, log10plus1R(np.array([money, stock_amount])) / 10)
+    # 归一化agent状态并添加到s中
+    # s = np.append(s, log10plus1R(np.array([money, stock_amount])) / 10)
     # 归一化
     # s = log10plus1R(s)/10
     # 预测
@@ -177,7 +174,7 @@ __config__ = {
         "matching_type": "next_bar",
         "benchmark": stock_code,
         "accounts": {
-            "stock": 100000
+            "stock": 1e6
         },
     },
     "extra": {

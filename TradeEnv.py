@@ -6,6 +6,7 @@ from gym import spaces
 from datetime import datetime
 from Util.Util import *
 import numpy as np
+import wandb
 
 """
 日间择时，开盘或收盘交易
@@ -19,24 +20,24 @@ class TradeEnv(gym.Env):
                  sim_delta_time='1 day', stock_codes='000938_XSHE',
                  result_path="E:/运行结果/train/", principal=1e5, origin_stock_amount=0, poundage_rate=5e-3,
                  time_format="%Y-%m-%d", auto_open_result=False, reward_verbose=1,
-                 post_processor=None, start_index_bound=None, end_index_bound=None, trade_time='open'):
+                 post_processor=None, start_index_bound=None, end_index_bound=None, trade_time='open', mode='test',
+                 agent_state=True):
         """
-                :param episode: 起始episode
+                :param start_episode: 起始episode
                 :param episode_len: episode长度
                 :param sim_delta_time: 最小交易频率('x min')
-                :param draw_frequency: render模式的绘制频率(step/次)
                 :param stock_codes: 股票代码
                 :param stock_data_path: 数据路径
                 :param result_path: 绘图结果保存路径
                 :param principal: 初始资金
-                :param gamma: 奖励价格加权衰减率
                 :param origin_stock_amount:初始股票股数
                 :param poundage_rate: 手续费率
                 :param time_format: 数据时间格式 str
-                :param t1settlement: A股T+1结算，每天只能交易一次
                 :param auto_open_result: 是否自动打开结果
                 :param reward_verbose: 0,1,2 不绘制reward，绘制单个reward（覆盖），绘制所有episode的reward
-                :param read_data: 是否读入数据
+                :param trade_time: 交易时间，open/close
+                :param mode: 环境模式，train/test, train模式下会使用wandb记录日志
+                :param agent_state: 是否添加agent状态（资金、头寸）到环境状态中
                 :return:
                 """
         super(TradeEnv, self).__init__()
@@ -56,24 +57,36 @@ class TradeEnv(gym.Env):
         self.obs_time = int(obs_time_size[0:-4])
         self.obs_delta_frequency = int(obs_delta_frequency[0:-4])
         self.action_space = spaces.Box(low=np.array([-1]), high=np.array([1]))
-        self.observation_space = spaces.Box(
-            low=np.array([float('-inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency))] + [0, 0]),
-            high=np.array([float('inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency) + 2)]))
+        self.agent_state = agent_state
+        if agent_state:
+            self.observation_space = spaces.Box(
+                low=np.array([float('-inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency))] + [0, 0]),
+                high=np.array([float('inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency) + 2)]))
+        else:
+            self.observation_space = spaces.Box(
+                low=np.array([float('-inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency))]),
+                high=np.array([float('inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency))]))
         self.step_ = 0
         self.post_processor = post_processor
         assert trade_time == "open" or trade_time == "close"
         self.trade_time = trade_time
+        assert mode == "train" or mode == "test" or mode == "eval"
+        self.mode = mode
         self.start_index_bound = self.obs_time
         if start_index_bound is not None:
             assert self.start_index_bound <= start_index_bound
             self.start_index_bound = start_index_bound
         self.customize_end_index_bound = end_index_bound
+
     def seed(self, seed=None):
         np.random.seed(seed)
 
     def reset(self):
-        # 随机选择一只股票
-        self.stock_code = np.random.choice(self.stock_codes)
+        if self.mode == 'eval':
+            self.stock_code = self.stock_codes[self.episode%len(self.stock_codes)]
+        else:
+            # 随机选择一只股票
+            self.stock_code = np.random.choice(self.stock_codes)
         # 读取预存的数据
         self.stock_data, self.keys = self.stock_datas[self.stock_code]
         # 设置终止边界
@@ -82,6 +95,7 @@ class TradeEnv(gym.Env):
         else:
             self.end_index_bound = len(self.stock_data) - self.episode_len
         assert self.start_index_bound < self.end_index_bound
+
         # 随机初始化时间
         self.current_time = \
             np.random.choice(np.array(list(self.stock_data.keys()))[self.start_index_bound:self.end_index_bound], 1)[0]
@@ -256,9 +270,10 @@ class TradeEnv(gym.Env):
         stock_state = np.flip(stock_state, axis=0)
         state = stock_state.astype(np.float32)
         state = state.flatten()
-        state = np.append(state, np.array([self.money, self.stock_amount]))
+        if self.agent_state:
+            state = np.append(state, np.array([self.money, self.stock_amount]))
         if self.post_processor is not None:
-            state = self.post_processor(state)
+            state = self.post_processor(state, self.agent_state)
         return state
 
     def draw(self):
@@ -314,7 +329,7 @@ class TradeEnv(gym.Env):
                                     xaxis='x',
                                     yaxis='y4',
                                     opacity=0.6)
-        py.offline.plot({
+        conf = {
             "data": [profit_scatter, base_scatter, price_scatter, trade_bar,
                      amount_scatter],
             "layout": go.Layout(
@@ -337,7 +352,32 @@ class TradeEnv(gym.Env):
                 paper_bgcolor='#000000',
                 plot_bgcolor='#000000'
             )
-        }, auto_open=self.auto_open_result, filename=path)
+        }
+        if self.mode != "train":
+            conf = {
+                "data": [profit_scatter, base_scatter, price_scatter, trade_bar,
+                         amount_scatter],
+                "layout": go.Layout(
+                    title=self.stock_code + " 回测结果" + "     初始资金：" + str(
+                        self.principal) + "     初始股票总量(股)：" + str(
+                        self.origin_stock_amount),
+                    xaxis=dict(title='日期', type="category", showgrid=False, zeroline=False),
+                    yaxis=dict(title='收益率', showgrid=False, zeroline=False, titlefont={'color': 'red'},
+                               tickfont={'color': 'red'}),
+                    yaxis2=dict(title='股价', overlaying='y', side='right',
+                                titlefont={'color': 'orange'}, tickfont={'color': 'orange'},
+                                showgrid=False,
+                                zeroline=False),
+                    yaxis3=dict(title='交易量', overlaying='y', side='right',
+                                titlefont={'color': '#000099'}, tickfont={'color': '#000099'},
+                                showgrid=False, position=0.97, zeroline=False, anchor='free'),
+                    yaxis4=dict(title='持股量', overlaying='y', side='left',
+                                titlefont={'color': '#00ccff'}, tickfont={'color': '#00ccff'},
+                                showgrid=False, position=0.03, zeroline=False, anchor='free')
+                )
+            }
+        py.offline.plot(conf, auto_open=self.auto_open_result, filename=path)
+        episode_path = path
         if self.reward_verbose != 0:
             reward_scatter = go.Scatter(x=[i for i in range(len(reward_list))],
                                         y=reward_list,
@@ -349,8 +389,7 @@ class TradeEnv(gym.Env):
                 path = dis + "reward.html".format(self.episode - 1)
             else:
                 path = dis + "reward_{}.html".format(self.episode - 1)
-
-            py.offline.plot({
+            conf = {
                 "data": [reward_scatter],
                 "layout": go.Layout(
                     title="reward",
@@ -361,6 +400,22 @@ class TradeEnv(gym.Env):
                     paper_bgcolor='#000000',
                     plot_bgcolor='#000000'
                 )
-            }, auto_open=self.auto_open_result, filename=path)
-
+            }
+            if self.mode != "train":
+                conf = {
+                    "data": [reward_scatter],
+                    "layout": go.Layout(
+                        title="reward",
+                        xaxis=dict(title='训练次数', showgrid=False, zeroline=False, titlefont={'color': 'white'},
+                                   tickfont={'color': 'white'}),
+                        yaxis=dict(title='reward', showgrid=False, zeroline=False, titlefont={'color': 'orange'},
+                                   tickfont={'color': 'orange'})
+                    )
+                }
+            py.offline.plot(conf, auto_open=self.auto_open_result, filename=path)
+            if self.mode == 'train':
+                wandb.log({"episode": wandb.Html(open(episode_path))}, sync=False)
+                os.remove(episode_path)
+                wandb.log({"episode_reward": wandb.Html(open(path))}, sync=False)
+                os.remove(path)
         return profit_list, base_list

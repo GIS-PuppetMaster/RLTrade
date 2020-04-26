@@ -2,7 +2,11 @@ import os
 import tensorflow.compat.v1 as tf
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+import warnings
+warnings.filterwarnings('ignore')
+
 scaler = StandardScaler()
+
 
 def log2plus1R(x):
     x = np.sign(x) * np.log2(np.abs(x + np.sign(x)))
@@ -17,14 +21,20 @@ def log10plus1R(x):
     x[np.isinf(x)] = 0
     return x
 
-def post_processor(state):
-    price = state[0:-2]
-    s = state[-2:]
-    price = price.reshape(60, 26)
-    price = scaler.fit_transform(price)
-    s = log10plus1R(s) / 10
-    # return log10plus1R(state) / 10
-    return np.append(price.flatten(), s)
+
+def post_processor(state, agent_state):
+    if agent_state:
+        price = state[0:-2]
+        s = state[-2:]
+        price = price.reshape(60, 26)
+        price = scaler.fit_transform(price)
+        s = log10plus1R(s) / 10
+        # return log10plus1R(state) / 10
+        return np.append(price.flatten(), s)
+    else:
+        price = state.reshape(60, 26)
+        return scaler.fit_transform(price).flatten()
+
 
 
 def del_file(path_data):
@@ -48,13 +58,16 @@ def gelu(input_tensor):
 def fill_inf(array):
     for i in range(array.shape[1]):  # 遍历每一列（每一列中的nan替换成该列的均值）
         # 跳过日期
-        if i==0:
+        if i == 0:
             continue
         temp_col = array[:, i]  # 当前的一列
         mean = np.mean(temp_col[~np.isinf(temp_col.astype(np.float))])
         for j in range(array.shape[0]):
             value = float(temp_col[j])
             if np.isinf(value):
-                array[j,i]=mean
+                array[j, i] = mean
     return array
+
+
+
 
