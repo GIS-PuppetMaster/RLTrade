@@ -13,9 +13,9 @@ class CustomPolicy(ActorCriticPolicy):
 
         with tf.variable_scope("model", reuse=reuse):
             activ = tf.nn.relu
-            net_arch = [dict(vf=[64,64], pi=[64,64])]
+            net_arch = [dict(vf=[256, 128, 64, 32], pi=[256, 128, 64, 32])]
             l2_scale = 0.01
-            for k,v in kwargs.items():
+            for k, v in kwargs.items():
                 if k == 'act_fun':
                     activ = v
                 elif k == 'net_arch':
@@ -29,22 +29,26 @@ class CustomPolicy(ActorCriticPolicy):
             arch_pi_and_vf = None
             for arch in net_arch:
                 if isinstance(arch, int):
-                    extracted_features = activ(tf.layers.dense(extracted_features, arch, name='feature_extract'+str(arch), kernel_initializer=tf.contrib.layers.l2_regularizer(l2_scale)))
+                    extracted_features = activ(
+                        tf.layers.dense(extracted_features, arch, name='feature_extract' + str(arch),
+                                        kernel_initializer=tf.contrib.layers.l2_regularizer(l2_scale)))
                     index_code += 1
-                elif isinstance(arch,dict):
+                elif isinstance(arch, dict):
                     arch_pi_and_vf = arch
                 else:
-                    raise ("自定义网络参数不合法: "+str(arch))
+                    raise ("自定义网络参数不合法: " + str(arch))
             pi_layer_size = arch_pi_and_vf['pi']
             vf_layer_size = arch_pi_and_vf['vf']
             pi_h = extracted_features
             for i, layer_size in enumerate(pi_layer_size):
-                pi_h = activ(tf.layers.dense(pi_h, layer_size, name='pi_fc' + str(i), kernel_regularizer=tf.contrib.layers.l2_regularizer(l2_scale)))
+                pi_h = activ(tf.layers.dense(pi_h, layer_size, name='pi_fc' + str(i),
+                                             kernel_regularizer=tf.contrib.layers.l2_regularizer(l2_scale)))
             pi_latent = pi_h
 
             vf_h = extracted_features
             for i, layer_size in enumerate(vf_layer_size):
-                vf_h = activ(tf.layers.dense(vf_h, layer_size, name='vf_fc' + str(i), kernel_regularizer=tf.contrib.layers.l2_regularizer(l2_scale)))
+                vf_h = activ(tf.layers.dense(vf_h, layer_size, name='vf_fc' + str(i),
+                                             kernel_regularizer=tf.contrib.layers.l2_regularizer(l2_scale)))
             value_fn = tf.layers.dense(vf_h, 1, name='vf')
             vf_latent = vf_h
 

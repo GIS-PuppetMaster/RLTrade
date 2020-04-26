@@ -12,7 +12,7 @@ episode = 50000
 EP_LEN = 250 * 3
 n_training_envs = 1
 save_freq = EP_LEN * 20
-eval_freq = EP_LEN * 20
+eval_freq = EP_LEN * 10
 agent_config = deepcopy(policy_args)
 agent_config['act_fun'] = agent_config['act_fun'].__name__
 agent_config['net_arch'] = str(agent_config['net_arch']).replace("\"","").replace("\'","")
@@ -35,13 +35,13 @@ train_env_config = dict(obs_time_size='60 day', obs_delta_frequency='1 day', sim
                         poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor, principal=1e6,
                         mode='train', agent_state=agent_state)
 eval_env_config = dict(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
-                       start_episode=0, episode_len=EP_LEN,
+                       start_episode=0, episode_len=250,
                        stock_codes=['000938_XSHE', '601318_XSHG', '601628_XSHG', '002049_XSHE',
                                     '000001_XSHE'],
                        result_path="E:/运行结果/TRPO/" + net_type + "/" + 'eval' + "/",
                        stock_data_path='./Data/test/',
                        poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor, principal=1e6,
-                       mode='eval', agent_state=agent_state, end_index_bound=-10)
+                       mode='eval', agent_state=agent_state, end_index_bound=-250)
 train_env_config_ = deepcopy(train_env_config)["post_processor"] = post_processor.__name__
 eval_env_config_ = deepcopy(eval_env_config)["post_processor"] = post_processor.__name__
 

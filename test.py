@@ -2,6 +2,7 @@ from stable_baselines import *
 from TradeEnv import TradeEnv
 import seaborn as sns
 import matplotlib.pyplot as plt
+from Util.CustomPolicy import *
 from Config import *
 stock_code = ['000938_XSHE', '601318_XSHG', '601628_XSHG', '002049_XSHE', '000001_XSHE']
 
@@ -18,20 +19,17 @@ for filename in file_list:
         max_file_name = filename
 # max_file_name = 'rl_model_24006656_steps.zip'
 model_path = './checkpoints/' + net_type + '/' + max_file_name
+model_path = './checkpoints/small_net_5stocks_regularize_StandardScaler/rl_model_97280_steps.zip'
 # model_path = "./BestModels/" + net_type + "/" + "best_model.zip"
 print(model_path)
-model = TRPO.load(model_path, policy_kwargs=policy_args)
+policy_args = dict(act_fun=gelu)
+model = TRPO.load(model_path, policy_kwargs=policy_args, policy=CustomPolicy)
 mode = 'test'
 
-env = TradeEnv(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
-               start_episode=0, episode_len=EP_LEN, stock_codes=stock_code,
-               result_path="E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/",
-               stock_data_path='./Data/test/',
-               poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor, end_index_bound=-10, principal=1e6,
-               agent_state=False)
+env = TradeEnv(**eval_env_config)
 env.seed(0)
 env = env.unwrapped
-env.result_path = "E:/运行结果/TRPO/" + FILE_TAG + "/" + mode + "/"
+env.result_path = "E:/运行结果/TRPO/" + net_type + "/" + mode + "/"
 profit = []
 base = []
 ep = 0
