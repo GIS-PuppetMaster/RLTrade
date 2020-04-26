@@ -7,6 +7,7 @@ from stable_baselines.common.callbacks import *
 from Util.CustomPolicy import CustomPolicy
 import sys
 from Config import *
+import wandb
 
 
 def make_env():
