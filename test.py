@@ -17,7 +17,7 @@ def find_model(id, useVersion="final", main_path="./"):
             folder_name = file
     if folder_name is None:
         raise ("未找到包含id:{}的文件夹".format(id))
-    if useVersion == "new":
+    if useVersion == "last":
         model_path = os.path.join(main_path, 'wandb', folder_name, 'checkpoints/')
         file_list = os.listdir(model_path)
         max_index = -1
@@ -35,7 +35,8 @@ def find_model(id, useVersion="final", main_path="./"):
         model_path = os.path.join(main_path, 'wandb', folder_name, 'best_model.zip')
         max_file_name = "best_model"
     else:
-        raise ("useVersion错误: {}".format(useVersion))
+        model_path = os.path.join(main_path, 'wandb', folder_name, 'checkpoints', useVersion)
+        max_file_name = useVersion
     return folder_name, model_path, max_file_name
 
 

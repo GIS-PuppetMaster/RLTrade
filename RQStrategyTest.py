@@ -1,55 +1,10 @@
 # coding=utf-8
 from stable_baselines import TRPO
-from ta.momentum import *
-from ta.volatility import *
-from ta.trend import *
-from ta.volume import *
-from ta.others import *
-import pandas as pd
 from Config import *
 from sklearn.preprocessing import StandardScaler
-from test import find_model
+from RunRQ import *
 
-stock_code = '000938_XSHE'
-stock_code = stock_code.replace("_", ".")
-indicators = [
-    ('RSI', rsi, ['close']),
-    ('MFI', money_flow_index, ['high', 'low', 'close', 'volume']),
-    ('TSI', tsi, ['close']),
-    ('UO', uo, ['high', 'low', 'close']),
-    ('AO', ao, ['high', 'close']),
-    ('MACDDI', macd_diff, ['close']),
-    ('VIP', vortex_indicator_pos, ['high', 'low', 'close']),
-    ('VIN', vortex_indicator_neg, ['high', 'low', 'close']),
-    ('TRIX', trix, ['close']),
-    ('MI', mass_index, ['high', 'low']),
-    ('CCI', cci, ['high', 'low', 'close']),
-    ('DPO', dpo, ['close']),
-    # ('KST', kst, ['close']),
-    # ('KSTS', kst_sig, ['close']),
-    ('ARU', aroon_up, ['close']),
-    ('ARD', aroon_down, ['close']),
-    # ('ARI', diff, ['ARU', 'ARD']),
-    ('BBH', bollinger_hband, ['close']),
-    ('BBL', bollinger_lband, ['close']),
-    ('BBM', bollinger_mavg, ['close']),
-    # ('BBHI', bollinger_hband_indicator, ['close']),
-    # ('BBLI', bollinger_lband_indicator, ['close']),
-    # ('KCHI', keltner_channel_hband_indicator, ['high', 'low', 'close']),
-    # ('KCLI', keltner_channel_lband_indicator, ['high', 'low', 'close']),
-    # ('DCHI', donchian_channel_hband_indicator, ['close']),
-    # ('DCLI', donchian_channel_lband_indicator, ['close']),
-    # ('ADI', acc_dist_index, ['high', 'low', 'close', 'volume']),
-    # ('OBV', on_balance_volume, ['close', 'volume']),
-    ('CMF', chaikin_money_flow, ['high', 'low', 'close', 'volume']),
-    # ('FI', force_index, ['close', 'volume']),
-    # ('EM', ease_of_movement, ['high', 'low', 'close', 'volume']),
-    # ('VPT', volume_price_trend, ['close', 'volume']),
-    # ('NVI', negative_volume_index, ['close', 'volume']),
-    ('DR', daily_return, ['close']),
-    ('DLR', daily_log_return, ['close'])
-]
-skip_suspended = True
+
 
 
 def get_indicator(raw):
@@ -85,13 +40,12 @@ def init(context):
     # context.XSHE000938_df = read_csv_as_df(csv_path)
     import os
     strategy_file_path = context.config.base.strategy_file
-    id = "j8cutel8"
-    type = "best"
+
     _, model_path, _ = find_model(id, type, os.path.dirname(strategy_file_path))
     logger.info('model_path:' + model_path)
     model = TRPO.load(model_path)
     context.model = model
-    context.stock_code = stock_code
+    context.stock_code = context.config.base.stock_code
     context.scaler = StandardScaler()
 
 
@@ -156,19 +110,3 @@ def handle_bar(context, bar):
     if quant != 0:
         order_lots(context.stock_code, quant)
 
-
-__config__ = {
-    "base": {
-        "start_date": "2017-01-03",
-        "end_date": "2020-04-21",
-        "frequency": "1d",
-        "matching_type": "next_bar",
-        "benchmark": stock_code,
-        "accounts": {
-            "stock": 1e6
-        },
-    },
-    "extra": {
-        "log_level": "verbose",
-    },
-}
