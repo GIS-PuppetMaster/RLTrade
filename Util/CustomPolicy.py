@@ -25,6 +25,8 @@ class CustomPolicy(ActorCriticPolicy):
 
             # extracted_features = nature_cnn(self.processed_obs, **kwargs)
             extracted_features = self.processed_obs
+            if len(ob_space.shape) > 1:
+                extracted_features = tf.layers.flatten(extracted_features)
             index_code = 0
             arch_pi_and_vf = None
             for arch in net_arch:
