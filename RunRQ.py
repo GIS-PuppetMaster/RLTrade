@@ -56,7 +56,7 @@ config = {
         "end_date": "2020-04-21",
         "frequency": "1d",
         "accounts": {
-            "stock": 1e6
+            "stock": 1e5
         },
     },
     "extra": {

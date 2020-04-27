@@ -17,7 +17,8 @@ def find_model(id, useVersion="final", main_path="./"):
             folder_name = file
     if folder_name is None:
         raise ("未找到包含id:{}的文件夹".format(id))
-    if useVersion == "last":
+    if useVersion == "last" or (useVersion == 'final' and not os.path.exists(
+            os.path.join(main_path, 'wandb', folder_name, 'final_model.zip'))):
         model_path = os.path.join(main_path, 'wandb', folder_name, 'checkpoints/')
         file_list = os.listdir(model_path)
         max_index = -1
