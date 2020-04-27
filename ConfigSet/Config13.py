@@ -11,8 +11,10 @@ agent_state = True
 episode = 50000
 EP_LEN = 250 * 3
 n_training_envs = 1
-save_freq = EP_LEN * 20
-eval_freq = EP_LEN * 10
+n_eval_episodes = 10
+save_freq = EP_LEN * 10
+eval_freq = EP_LEN * 50
+seed = 0
 agent_config = deepcopy(policy_args)
 agent_config['act_fun'] = agent_config['act_fun'].__name__
 agent_config['net_arch'] = str(agent_config['net_arch']).replace("\"", "").replace("\'", "")
@@ -23,9 +25,17 @@ agent_config['n_training_envs'] = n_training_envs
 agent_config['GPU'] = GPU
 agent_config['save_freq'] = save_freq
 agent_config['eval_freq'] = eval_freq
-net_type = str(agent_config).replace(":", "-").replace("'", "").replace("{", "").replace("}", "").replace("[",
-                                                                                                          "").replace(
-    "]", "").replace(",", "_").replace(" ", "")
+agent_config['n_eval_episodes'] = n_eval_episodes
+agent_config['seed'] = seed
+exp_name = (str(agent_config)+"") \
+    .replace(":", "-") \
+    .replace("'", "") \
+    .replace("{", "") \
+    .replace("}", "") \
+    .replace("[", "") \
+    .replace("]", "") \
+    .replace(",", "_") \
+    .replace(" ", "")
 train_env_config = dict(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
                         start_episode=0, episode_len=EP_LEN,
                         stock_codes=['000938_XSHE', '601318_XSHG', '601628_XSHG', '002049_XSHE',

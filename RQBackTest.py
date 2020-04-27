@@ -86,7 +86,7 @@ def init(context):
     # context.XSHE000938_df = read_csv_as_df(csv_path)
     import os
     strategy_file_path = context.agent_config.base.strategy_file
-    file_list = os.listdir(os.path.join(os.path.dirname(strategy_file_path), './checkpoints/' + net_type + '/'))
+    file_list = os.listdir(os.path.join(os.path.dirname(strategy_file_path), './checkpoints/' + exp_name + '/'))
     max_index = -1
     max_file_name = ''
     for filename in file_list:
@@ -95,7 +95,7 @@ def init(context):
             max_index = index
             max_file_name = filename
     # max_file_name = 'rl_model_15779840_steps'
-    model_path = os.path.join(os.path.dirname(strategy_file_path), "./checkpoints/" + net_type + "/" + max_file_name)
+    model_path = os.path.join(os.path.dirname(strategy_file_path), "./checkpoints/" + exp_name + "/" + max_file_name)
     # model_path = os.path.join(os.path.dirname(strategy_file_path), "./BestModels/" + net_type + "/" + "best_model.zip")
     logger.info('model_path:' + model_path)
     model = TRPO.load(model_path, policy=CustomPolicy,
