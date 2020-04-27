@@ -114,7 +114,7 @@ class TradeEnv(gym.Env):
         return self.get_state()
 
     def step(self, action):
-        if self.step_ >= self.episode_len:
+        if self.step_ > self.episode_len:
             self.done = True
         self.step_ += 1
         quant = 0

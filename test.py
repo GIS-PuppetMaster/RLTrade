@@ -4,29 +4,27 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from Util.CustomPolicy import *
 from Config import *
+import wandb
+import os
 
 
-def test(save_fig):
-    stock_code = ['000938_XSHE', '601318_XSHG', '601628_XSHG', '002049_XSHE', '000001_XSHE']
-    # exp_name = 'act_fun-gelu_net_arch-vf-256_128_64_32_pi-256_128_64_32_l2_scale-0.01_agent_state-True_episode-50000_EP_LEN-750_n_training_envs-1_GPU-0_save_freq-15000_eval_freq-7500'
-    file_list = os.listdir('./checkpoints/' + exp_name)
-    max_index = -1
-    max_file_name = ''
-    for filename in file_list:
-        index = int(filename.split("_")[2])
-        if index > max_index:
-            max_index = index
-            max_file_name = filename
-    # max_file_name = 'rl_model_24006656_steps.zip'
-    model_path = './checkpoints/' + exp_name + '/' + max_file_name
-    # model_path = './checkpoints/small_net_5stocks_regularize_StandardScaler/rl_model_97280_steps.zip'
-    # model_path = "./BestModels/" + exp_name + "/" + "best_model.zip"
+def test(save_fig, final=True):
+    final_path = os.path.join(wandb.run.dir, 'final_model')
+    if not final or not os.path.exists(final_path):
+        model_path = os.path.join(wandb.run.dir, 'checkpoints')
+        file_list = os.listdir(model_path)
+        max_index = -1
+        max_file_name = ''
+        for filename in file_list:
+            index = int(filename.split("_")[2])
+            if index > max_index:
+                max_index = index
+                max_file_name = filename
+    else:
+        model_path = final_path
     print(model_path)
-    # policy_args = dict(act_fun=gelu)
-    # policy_args = dict(act_fun=tf.nn.relu, net_arch=[dict(vf=[256, 128, 64], pi=[64, 64])], l2_scale=0.01)
-    model = TRPO.load(model_path, policy_kwargs=policy_args, policy=CustomPolicy)
+    model = TRPO.load(model_path)
     mode = 'test'
-
     env = TradeEnv(**eval_env_config)
     env.seed(seed)
     env = env.unwrapped
@@ -76,4 +74,6 @@ def test(save_fig):
 
 
 if __name__ == "__main__":
+    id = ""
+    wandb.init(id=id, resume="must")
     test(True)

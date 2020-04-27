@@ -94,6 +94,8 @@ class MyEvalCallback(EventCallback):
                 print("Episode length: {:.2f} +/- {:.2f}".format(mean_ep_length, std_ep_length))
             wandb.log({"eval_mean_reward": mean_reward}, sync=False)
             wandb.log({"eval_std_reward": std_reward}, sync=False)
+            wandb.log({"eval_episode_reward": episode_rewards}, sync=False)
+            wandb.log({"eval_episode_length": episode_lengths}, sync=False)
             if mean_reward > self.best_mean_reward:
                 if self.verbose > 0:
                     print("New best mean reward!")
