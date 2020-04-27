@@ -48,58 +48,59 @@ indicators = [
 ]
 skip_suspended = True
 id = "j8cutel8"
-type = "best"
+type = "last"
 path = './RQStrategyTest.py'
+config = {
+    "base": {
+        "start_date": "2017-01-03",
+        "end_date": "2020-04-21",
+        "frequency": "1d",
+        "benchmark": stock_code,
+        "accounts": {
+            "stock": 1e6
+        },
+    },
+    "extra": {
+        "log_level": "verbose",
+    },
+    "mod": {
+        "sys_analyser": {
+            "enabled": True,
+            "plot": True
+        },
+        "sys_accounts": {
+            "enabled": True,
+            # 开启/关闭 股票 T+1， 默认开启
+            "stock_t1": True,
+            # 分红再投资
+            "dividend_reinvestment": False,
+            # 当持仓股票退市时，按照退市价格返还现金
+            "cash_return_by_stock_delisted": True,
+            # 股票下单因资金不足被拒时改为使用全部剩余资金下单
+            "auto_switch_order_value": True,
+            # 检查股票可平仓位是否充足
+            "validate_stock_position": True,
+            # 检查期货可平仓位是否充足
+            "validate_future_position": True,
+        },
+        "sys_simulation": {
+            "enabled": True,
+            "slippage": 0.0,
+            "matching_type": "next_bar",
+        }
+    }
+}
 if __name__ == '__main__':
+    folder_name, _, max_file_name = find_model(id, type)
     for stock_code in stock_codes:
         stock_code = stock_code.replace("_", ".")
-        config = {
-            "base": {
-                "start_date": "2020-01-03",
-                "end_date": "2020-04-21",
-                "frequency": "1d",
-                "benchmark": stock_code,
-                "accounts": {
-                    "stock": 1e6
-                },
-            },
-            "extra": {
-                "log_level": "verbose",
-            },
-            "mod": {
-                "sys_analyser": {
-                    "enabled": True,
-                    "plot": True
-                },
-                "sys_accounts": {
-                    "enabled": True,
-                    # 开启/关闭 股票 T+1， 默认开启
-                    "stock_t1": True,
-                    # 分红再投资
-                    "dividend_reinvestment": False,
-                    # 当持仓股票退市时，按照退市价格返还现金
-                    "cash_return_by_stock_delisted": True,
-                    # 股票下单因资金不足被拒时改为使用全部剩余资金下单
-                    "auto_switch_order_value": True,
-                    # 检查股票可平仓位是否充足
-                    "validate_stock_position": True,
-                    # 检查期货可平仓位是否充足
-                    "validate_future_position": True,
-                },
-                "sys_simulation": {
-                    "enabled": True,
-                    "slippage": 0.0,
-                    "matching_type": "next_bar",
-                }
-            }
-        }
-        folder_name, _, max_file_name = find_model(id, type)
+        config['base']['benchmark'] = stock_code
         plot_save_path = os.path.join(os.getcwd(), 'TestResult', folder_name, 'RQTest', max_file_name,
                                       stock_code + ".png")
         file_save_path = os.path.join(os.getcwd(), 'TestResult', folder_name, 'RQTest', max_file_name,
                                       stock_code + ".pkl")
-        if not os.path.exists(os.path.join(os.getcwd(), 'TestResult', folder_name, 'RQTest', max_file_name,)):
-            os.makedirs(os.path.join(os.getcwd(), 'TestResult', folder_name, 'RQTest', max_file_name,))
+        if not os.path.exists(os.path.join(os.getcwd(), 'TestResult', folder_name, 'RQTest', max_file_name, )):
+            os.makedirs(os.path.join(os.getcwd(), 'TestResult', folder_name, 'RQTest', max_file_name, ))
         config['base']['stock_code'] = stock_code
         config['mod']['sys_analyser']['plot_save_file'] = plot_save_path
         config['mod']['sys_analyser']['output_file'] = file_save_path
