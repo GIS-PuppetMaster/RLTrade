@@ -55,7 +55,6 @@ config = {
         "start_date": "2017-01-03",
         "end_date": "2020-04-21",
         "frequency": "1d",
-        "benchmark": stock_code,
         "accounts": {
             "stock": 1e6
         },
