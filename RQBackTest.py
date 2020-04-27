@@ -6,10 +6,9 @@ from ta.trend import *
 from ta.volume import *
 from ta.others import *
 import pandas as pd
-from Util.CustomPolicy import CustomPolicy
 from Config import *
 from sklearn.preprocessing import StandardScaler
-
+from test import find_model
 
 stock_code = '000938_XSHE'
 stock_code = stock_code.replace("_", ".")
@@ -85,21 +84,12 @@ def init(context):
     # csv_path = os.path.join(os.path.dirname(strategy_file_path), "./Data/test/000938_XSHE_day.csv")
     # context.XSHE000938_df = read_csv_as_df(csv_path)
     import os
-    strategy_file_path = context.agent_config.base.strategy_file
-    file_list = os.listdir(os.path.join(os.path.dirname(strategy_file_path), './checkpoints/' + exp_name + '/'))
-    max_index = -1
-    max_file_name = ''
-    for filename in file_list:
-        index = int(filename.split("_")[2])
-        if index > max_index:
-            max_index = index
-            max_file_name = filename
-    # max_file_name = 'rl_model_15779840_steps'
-    model_path = os.path.join(os.path.dirname(strategy_file_path), "./checkpoints/" + exp_name + "/" + max_file_name)
-    # model_path = os.path.join(os.path.dirname(strategy_file_path), "./BestModels/" + net_type + "/" + "best_model.zip")
+    strategy_file_path = context.config.base.strategy_file
+    id = "j8cutel8"
+    type = "best"
+    _, model_path, _ = find_model(id, type, os.path.dirname(strategy_file_path))
     logger.info('model_path:' + model_path)
-    model = TRPO.load(model_path, policy=CustomPolicy,
-                      policy_kwargs=policy_args)
+    model = TRPO.load(model_path)
     context.model = model
     context.stock_code = stock_code
     context.scaler = StandardScaler()
@@ -131,7 +121,8 @@ def handle_bar(context, bar):
     # 获取资金
     money = context.portfolio.cash
     # 归一化agent状态并添加到s中
-    # s = np.append(s, log10plus1R(np.array([money, stock_amount])) / 10)
+    if agent_state:
+        s = np.append(s, log10plus1R(np.array([money, stock_amount])) / 10)
     # 归一化
     # s = log10plus1R(s)/10
     # 预测

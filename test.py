@@ -2,15 +2,23 @@ from stable_baselines import *
 from TradeEnv import TradeEnv
 import seaborn as sns
 import matplotlib.pyplot as plt
-from Util.CustomPolicy import *
 from Config import *
 import os
 
 
-def test(save_fig, folder_name, useFinal=True):
-    model_path = os.path.join('./wandb', folder_name, 'final_model')
-    if not useFinal or not os.path.exists(model_path):
-        model_path = os.path.join('./wandb', folder_name, 'checkpoints/')
+def find_model(id, useVersion="final", main_path="./"):
+    if id is None or id == "":
+        raise ("id不能为空")
+    fl = os.listdir('./wandb/')
+    folder_name = None
+    for file in fl:
+        ID = file.split("-")[-1]
+        if id == ID:
+            folder_name = file
+    if folder_name is None:
+        raise ("未找到包含id:{}的文件夹".format(id))
+    if useVersion == "new":
+        model_path = os.path.join(main_path, 'wandb', folder_name, 'checkpoints/')
         file_list = os.listdir(model_path)
         max_index = -1
         max_file_name = ''
@@ -20,15 +28,26 @@ def test(save_fig, folder_name, useFinal=True):
                 max_index = index
                 max_file_name = filename
         model_path = os.path.join(model_path, max_file_name)
-    else:
+    elif useVersion == "final":
+        model_path = os.path.join(main_path, 'wandb', folder_name, 'final_model.zip')
         max_file_name = "final"
+    elif useVersion == "best":
+        model_path = os.path.join(main_path, 'wandb', folder_name, 'best_model.zip')
+        max_file_name = "best_model"
+    else:
+        raise ("useVersion错误: {}".format(useVersion))
+    return folder_name, model_path, max_file_name
+
+
+def test(save_fig, id, useVersion="final"):
+    folder_name, model_path, max_file_name = find_model(id, useVersion)
     print(model_path)
     model = TRPO.load(model_path)
     mode = 'test'
     env = TradeEnv(**eval_env_config)
     env.seed(seed)
     env = env.unwrapped
-    env.result_path = "E:/运行结果/TRPO/" + exp_name + "/" + mode + "/"
+    env.result_path = "E:/运行结果/TRPO/" + folder_name + "/" + mode + "/"
     profit = []
     base = []
     ep = 0
@@ -64,10 +83,10 @@ def test(save_fig, folder_name, useFinal=True):
     sns.tsplot(data=profit, time=np.arange(0, profit.shape[1]), ax=ax, color='r')
     sns.tsplot(data=base, time=np.arange(0, base.shape[1]), ax=ax, color='b')
     if save_fig:
-        if not os.path.exists('./TestResult/' + exp_name + '/'):
-            os.makedirs('./TestResult/' + exp_name + '/')
+        if not os.path.exists('./TestResult/' + folder_name + '/'):
+            os.makedirs('./TestResult/' + folder_name + '/')
         try:
-            plt.savefig('./TestResult/' + exp_name + '/' + max_file_name + '.png')
+            plt.savefig('./TestResult/' + folder_name + '/' + max_file_name + '.png')
         except:
             print('reward图片被占用，无法写入')
     return plt
@@ -75,14 +94,5 @@ def test(save_fig, folder_name, useFinal=True):
 
 if __name__ == "__main__":
     id = "j8cutel8"
-    if id is None or id == "":
-        raise ("id不能为空")
-    fl = os.listdir('./wandb/')
-    folder_name = None
-    for file in fl:
-        ID = file.split("-")[-1]
-        if id == ID:
-            folder_name = file
-    if folder_name is None:
-        raise ("未找到包含id:{}的文件夹".format(id))
-    test(True, folder_name)
+    test(True, id, "best")
+    test(True, id, "final")
