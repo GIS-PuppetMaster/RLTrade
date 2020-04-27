@@ -4,14 +4,13 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from Util.CustomPolicy import *
 from Config import *
-import wandb
 import os
 
 
-def test(save_fig, final=True):
-    final_path = os.path.join(wandb.run.dir, 'final_model')
-    if not final or not os.path.exists(final_path):
-        model_path = os.path.join(wandb.run.dir, 'checkpoints')
+def test(save_fig, folder_name, useFinal=True):
+    model_path = os.path.join('./wandb', folder_name, 'final_model')
+    if not useFinal or not os.path.exists(model_path):
+        model_path = os.path.join('./wandb', folder_name, 'checkpoints/')
         file_list = os.listdir(model_path)
         max_index = -1
         max_file_name = ''
@@ -20,8 +19,9 @@ def test(save_fig, final=True):
             if index > max_index:
                 max_index = index
                 max_file_name = filename
+        model_path = os.path.join(model_path, max_file_name)
     else:
-        model_path = final_path
+        max_file_name = "final"
     print(model_path)
     model = TRPO.load(model_path)
     mode = 'test'
@@ -74,6 +74,15 @@ def test(save_fig, final=True):
 
 
 if __name__ == "__main__":
-    id = ""
-    wandb.init(id=id, resume="must")
-    test(True)
+    id = "j8cutel8"
+    if id is None or id == "":
+        raise ("id不能为空")
+    fl = os.listdir('./wandb/')
+    folder_name = None
+    for file in fl:
+        ID = file.split("-")[-1]
+        if id == ID:
+            folder_name = file
+    if folder_name is None:
+        raise ("未找到包含id:{}的文件夹".format(id))
+    test(True, folder_name)
