@@ -1,6 +1,6 @@
 from rqalpha import run_file
 import os
-from test import find_model
+from Test import find_model
 from ta.momentum import *
 from ta.volatility import *
 from ta.trend import *

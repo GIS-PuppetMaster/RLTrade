@@ -4,7 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from Config import *
 import os
-
+from Util.CustomPolicy import LoadCustomPolicyForTest
 
 def find_model(id, useVersion="final", main_path="./"):
     if id is None or id == "":
@@ -43,8 +43,11 @@ def find_model(id, useVersion="final", main_path="./"):
 
 def test(save_fig, id, useVersion="final"):
     folder_name, model_path, max_file_name = find_model(id, useVersion)
+    # folder_name = 'oldEnvOldCheckpoint'
+    # max_file_name = 'rl_model_25589760_steps.zip'
+    # model_path = './checkpoints/small_net_5stocks_regularize_StandardScaler/'+max_file_name
     print(model_path)
-    model = TRPO.load(model_path)
+    model = LoadCustomPolicyForTest(model_path)
     mode = 'test'
     env = TradeEnv(**eval_env_config)
     env.seed(seed)
@@ -95,6 +98,6 @@ def test(save_fig, id, useVersion="final"):
 
 
 if __name__ == "__main__":
-    id = "j8cutel8"
-    test(True, id, "best")
+    id = "qdpulf2y"
     test(True, id, "final")
+    test(True, id, "best")

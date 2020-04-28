@@ -6,7 +6,7 @@ import tensorflow as tf
 
 GPU = "0"
 os.environ["CUDA_VISIBLE_DEVICES"] = GPU
-policy_args = dict(act_fun=gelu, net_arch=[dict(vf=[256, 128, 64, 32], pi=[256, 128, 64, 32])], l2_scale=0.01)
+policy_args = dict(act_fun=gelu, net_arch=[dict(vf=[256, 128, 64, 32], pi=[256, 128, 64, 32])], l2_scale=0.01, dropout_rate=0.5)
 agent_state = True
 episode = 50000
 EP_LEN = 250 * 3
@@ -43,7 +43,7 @@ train_env_config = dict(obs_time_size='60 day', obs_delta_frequency='1 day', sim
                         result_path="E:/运行结果/TRPO/" + exp_name + "/train/",
                         stock_data_path='./Data/train/',
                         poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor,
-                        mode='train', agent_state=agent_state)
+                        mode='train', agent_state=agent_state, end_index_bound=-10)
 eval_env_config = dict(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
                        start_episode=0, episode_len=250,
                        stock_codes=['000938_XSHE', '601318_XSHG', '601628_XSHG', '002049_XSHE',

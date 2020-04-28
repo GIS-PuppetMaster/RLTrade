@@ -1,10 +1,22 @@
 import gym
 import tensorflow as tf
-
 from stable_baselines.common.policies import ActorCriticPolicy, register_policy, nature_cnn, MlpPolicy, \
     FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines import A2C
+from Config import seed
+from stable_baselines import TRPO
+
+
+def LoadCustomPolicyForTest(model_path):
+    data, params = TRPO._load_from_file(model_path)
+    # 设置dropout比率为0.，模型内部会自动设置training为False
+    data['policy_kwargs']['dropout_rate'] = 0.
+    model = TRPO(policy=data["policy"], env=None, _init_setup_model=False)
+    model.__dict__.update(data)
+    model.setup_model()
+    model.load_parameters(params)
+    return model
 
 
 class CustomPolicy(ActorCriticPolicy):
@@ -15,14 +27,23 @@ class CustomPolicy(ActorCriticPolicy):
             activ = tf.nn.relu
             net_arch = [dict(vf=[256, 128, 64, 32], pi=[256, 128, 64, 32])]
             l2_scale = 0.01
+            dropout_rate = 0.0
+            training = False
             for k, v in kwargs.items():
                 if k == 'act_fun':
                     activ = v
                 elif k == 'net_arch':
                     net_arch = v
-                elif k == 'l2':
+                elif k == 'l2_scale':
                     l2_scale = v
-
+                elif k == 'dropout_rate':
+                    dropout_rate = v
+                    if dropout_rate == 0.:
+                        training = False
+                    else:
+                        training = True
+                else:
+                    raise ("不支持的Policy_arg:{}".format(k))
             # extracted_features = nature_cnn(self.processed_obs, **kwargs)
             extracted_features = self.processed_obs
             if len(ob_space.shape) > 1:
@@ -31,9 +52,12 @@ class CustomPolicy(ActorCriticPolicy):
             arch_pi_and_vf = None
             for arch in net_arch:
                 if isinstance(arch, int):
-                    extracted_features = activ(
+                    extracted_features = tf.layers.dropout(activ(
                         tf.layers.dense(extracted_features, arch, name='feature_extract' + str(arch),
-                                        kernel_initializer=tf.contrib.layers.l2_regularizer(l2_scale)))
+                                        kernel_initializer=tf.contrib.layers.l2_regularizer(l2_scale))),
+                        rate=dropout_rate,
+                        seed=seed,
+                        training=training)
                     index_code += 1
                 elif isinstance(arch, dict):
                     arch_pi_and_vf = arch
@@ -43,14 +67,18 @@ class CustomPolicy(ActorCriticPolicy):
             vf_layer_size = arch_pi_and_vf['vf']
             pi_h = extracted_features
             for i, layer_size in enumerate(pi_layer_size):
-                pi_h = activ(tf.layers.dense(pi_h, layer_size, name='pi_fc' + str(i),
-                                             kernel_regularizer=tf.contrib.layers.l2_regularizer(l2_scale)))
+                pi_h = tf.layers.dropout(activ(tf.layers.dense(pi_h, layer_size, name='pi_fc' + str(i),
+                                                               kernel_regularizer=tf.contrib.layers.l2_regularizer(
+                                                                   l2_scale))), rate=dropout_rate, seed=seed,
+                                         training=training)
             pi_latent = pi_h
 
             vf_h = extracted_features
             for i, layer_size in enumerate(vf_layer_size):
-                vf_h = activ(tf.layers.dense(vf_h, layer_size, name='vf_fc' + str(i),
-                                             kernel_regularizer=tf.contrib.layers.l2_regularizer(l2_scale)))
+                vf_h = tf.layers.dropout(activ(tf.layers.dense(vf_h, layer_size, name='vf_fc' + str(i),
+                                                               kernel_regularizer=tf.contrib.layers.l2_regularizer(
+                                                                   l2_scale))), rate=dropout_rate, seed=seed,
+                                         training=training)
             value_fn = tf.layers.dense(vf_h, 1, name='vf')
             vf_latent = vf_h
 

@@ -3,6 +3,7 @@ from stable_baselines import TRPO
 from Config import *
 from sklearn.preprocessing import StandardScaler
 from RunRQ import *
+from Util.CustomPolicy import LoadCustomPolicyForTest
 
 
 
@@ -43,7 +44,7 @@ def init(context):
 
     _, model_path, _ = find_model(id, type, os.path.dirname(strategy_file_path))
     logger.info('model_path:' + model_path)
-    model = TRPO.load(model_path)
+    model = LoadCustomPolicyForTest(model_path)
     context.model = model
     context.stock_code = context.config.base.stock_code
     context.scaler = StandardScaler()
