@@ -1,40 +1,8 @@
 import os
 import shutil
+from Util.Util import find_model
 
 
-def find_model(id, useVersion="final", main_path="./"):
-    if id is None or id == "":
-        raise ("id不能为空")
-    fl = os.listdir('./wandb/')
-    folder_name = None
-    for file in fl:
-        ID = file.split("-")[-1]
-        if id == ID:
-            folder_name = file
-    if folder_name is None:
-        raise ("未找到包含id:{}的文件夹".format(id))
-    if useVersion == "last" or (useVersion == 'final' and not os.path.exists(
-            os.path.join(main_path, 'wandb', folder_name, 'final_model.zip'))):
-        model_path = os.path.join(main_path, 'wandb', folder_name, 'checkpoints/')
-        file_list = os.listdir(model_path)
-        max_index = -1
-        max_file_name = ''
-        for filename in file_list:
-            index = int(filename.split("_")[2])
-            if index > max_index:
-                max_index = index
-                max_file_name = filename
-        model_path = os.path.join(model_path, max_file_name)
-    elif useVersion == "final":
-        model_path = os.path.join(main_path, 'wandb', folder_name, 'final_model.zip')
-        max_file_name = "final"
-    elif useVersion == "best":
-        model_path = os.path.join(main_path, 'wandb', folder_name, 'best_model.zip')
-        max_file_name = "best_model"
-    else:
-        model_path = os.path.join(main_path, 'wandb', folder_name, 'checkpoints', useVersion)
-        max_file_name = useVersion
-    return folder_name, model_path, max_file_name
 
 
 def test(save_fig, id, useVersion="final"):
