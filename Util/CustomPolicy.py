@@ -54,7 +54,7 @@ class CustomPolicy(ActorCriticPolicy):
                 if isinstance(arch, int):
                     extracted_features = tf.layers.dropout(activ(
                         tf.layers.dense(extracted_features, arch, name='feature_extract' + str(arch),
-                                        kernel_initializer=tf.contrib.layers.l2_regularizer(l2_scale))),
+                                        kernel_regularizer=tf.contrib.layers.l2_regularizer(l2_scale))),
                         rate=dropout_rate,
                         seed=seed,
                         training=training)

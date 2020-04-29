@@ -1,10 +1,6 @@
-from stable_baselines import *
-from TradeEnv import TradeEnv
-import seaborn as sns
-import matplotlib.pyplot as plt
-from Config import *
 import os
-from Util.CustomPolicy import LoadCustomPolicyForTest
+import shutil
+
 
 def find_model(id, useVersion="final", main_path="./"):
     if id is None or id == "":
@@ -43,6 +39,17 @@ def find_model(id, useVersion="final", main_path="./"):
 
 def test(save_fig, id, useVersion="final"):
     folder_name, model_path, max_file_name = find_model(id, useVersion)
+    # 恢复配置文件
+    os.rename('./Config.py', './Config_old.py')
+    shutil.copyfile(os.path.join('./wandb', folder_name, 'Config.py'), './Config.py')
+    from Config import eval_env_config, seed, n_eval_episodes
+    from TradeEnv import TradeEnv
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    from Util.CustomPolicy import LoadCustomPolicyForTest
+    import numpy as np
+    os.remove('./Config.py')
+    os.rename('./Config_old.py', './Config.py')
     # folder_name = 'oldEnvOldCheckpoint'
     # max_file_name = 'rl_model_25589760_steps.zip'
     # model_path = './checkpoints/small_net_5stocks_regularize_StandardScaler/'+max_file_name
@@ -98,6 +105,6 @@ def test(save_fig, id, useVersion="final"):
 
 
 if __name__ == "__main__":
-    id = "qdpulf2y"
+    id = "0itx5mpc"
     test(True, id, "final")
     test(True, id, "best")
