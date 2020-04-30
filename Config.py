@@ -9,8 +9,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = GPU
 policy_args = dict(act_fun=gelu, net_arch=[512, dict(vf=[256, 128], pi=[256, 128])], l2_scale=0.01,
                    dropout_rate=0.)
 agent_state = False
-episode = 50000
-EP_LEN = 250 * 3
+episode = 10000
+EP_LEN = 240 * 7
 n_training_envs = 1
 n_eval_episodes = 50
 save_freq = EP_LEN * 50
@@ -38,20 +38,22 @@ exp_name = (str(agent_config) + "") \
     .replace("]", "") \
     .replace(",", "_") \
     .replace(" ", "")
-train_env_config = dict(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
+train_env_config = dict(obs_time_size=240, obs_delta_frequency=1, sim_delta_time=1,
                         start_episode=0, episode_len=EP_LEN,
                         stock_codes=stock_codes,
                         result_path="E:/运行结果/TRPO/" + exp_name + "/train/",
                         stock_data_path='./Data/train/',
                         poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor,
-                        mode='train', agent_state=agent_state, end_index_bound=-10)
-eval_env_config = dict(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
+                        mode='train', agent_state=agent_state, end_index_bound=-10, feature_num=6, data_type='minute',
+                        time_format="%Y-%m-%d %H:%M:%S")
+eval_env_config = dict(obs_time_size=240, obs_delta_frequency=1, sim_delta_time=1,
                        start_episode=0, episode_len=250,
                        stock_codes=stock_codes,
                        result_path="E:/运行结果/TRPO/" + exp_name + "/" + 'eval' + "/",
                        stock_data_path='./Data/test/',
                        poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor,
-                       mode='eval', agent_state=agent_state, end_index_bound=-250)
+                       mode='eval', agent_state=agent_state, end_index_bound=-250, feature_num=6, data_type='minute',
+                       time_format="%Y-%m-%d %H:%M:%S")
 train_env_config_ = deepcopy(train_env_config)
 train_env_config_["post_processor"] = post_processor.__name__
 eval_env_config_ = deepcopy(eval_env_config)

@@ -15,13 +15,13 @@ import wandb
 
 # noinspection PyAttributeOutsideInit
 class TradeEnv(gym.Env):
-    def __init__(self, stock_data_path, start_episode=0, episode_len=720, obs_time_size='60 day',
-                 obs_delta_frequency='1 day',
-                 sim_delta_time='1 day', stock_codes='000938_XSHE',
+    def __init__(self, stock_data_path, start_episode=0, episode_len=720, obs_time_size=60,
+                 obs_delta_frequency=1,
+                 sim_delta_time=1, stock_codes='000938_XSHE',
                  result_path="E:/运行结果/train/", principal=1e5, origin_stock_amount=0, poundage_rate=5e-3,
                  time_format="%Y-%m-%d", auto_open_result=False, reward_verbose=1,
                  post_processor=None, start_index_bound=None, end_index_bound=None, trade_time='open', mode='test',
-                 agent_state=True):
+                 agent_state=True, data_type='day', feature_num=26):
         """
                 :param start_episode: 起始episode
                 :param episode_len: episode长度
@@ -41,7 +41,7 @@ class TradeEnv(gym.Env):
                 :return:
                 """
         super(TradeEnv, self).__init__()
-        self.delta_time = int(sim_delta_time[0:-4])
+        self.delta_time = sim_delta_time
         self.stock_codes = stock_codes
         self.stock_data_path = stock_data_path
         self.result_path = result_path
@@ -52,20 +52,27 @@ class TradeEnv(gym.Env):
         self.auto_open_result = auto_open_result
         self.episode = start_episode
         self.episode_len = episode_len
+        assert data_type == 'day' or data_type == 'minute'
+        self.data_type = data_type
+        self.feature_num = feature_num
         self.stock_datas = {stock_code: self.read_stock_data(stock_code) for stock_code in self.stock_codes}
         self.reward_verbose = reward_verbose
-        self.obs_time = int(obs_time_size[0:-4])
-        self.obs_delta_frequency = int(obs_delta_frequency[0:-4])
+        self.obs_time = obs_time_size
+        self.obs_delta_frequency = obs_delta_frequency
         self.action_space = spaces.Box(low=np.array([-1]), high=np.array([1]))
         self.agent_state = agent_state
         if agent_state:
             self.observation_space = spaces.Box(
-                low=np.array([float('-inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency))] + [0, 0]),
-                high=np.array([float('inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency) + 2)]))
+                low=np.array(
+                    [float('-inf') for _ in range(self.feature_num * (self.obs_time // self.obs_delta_frequency))] + [0, 0]),
+                high=np.array(
+                    [float('inf') for _ in range(self.feature_num * (self.obs_time // self.obs_delta_frequency) + 2)]))
         else:
             self.observation_space = spaces.Box(
-                low=np.array([float('-inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency))]),
-                high=np.array([float('inf') for _ in range(26 * (self.obs_time // self.obs_delta_frequency))]))
+                low=np.array(
+                    [float('-inf') for _ in range(self.feature_num * (self.obs_time // self.obs_delta_frequency))]),
+                high=np.array(
+                    [float('inf') for _ in range(self.feature_num * (self.obs_time // self.obs_delta_frequency))]))
         self.step_ = 0
         self.post_processor = post_processor
         assert trade_time == "open" or trade_time == "close"
@@ -83,7 +90,7 @@ class TradeEnv(gym.Env):
 
     def reset(self):
         if self.mode == 'eval':
-            self.stock_code = self.stock_codes[self.episode%len(self.stock_codes)]
+            self.stock_code = self.stock_codes[self.episode % len(self.stock_codes)]
         else:
             # 随机选择一只股票
             self.stock_code = np.random.choice(self.stock_codes)
@@ -238,7 +245,10 @@ class TradeEnv(gym.Env):
             self.done = True
 
     def read_stock_data(self, stock_code):
-        raw = pd.read_csv(self.stock_data_path + stock_code + '_with_indicator.csv', index_col=False)
+        if self.data_type == 'day':
+            raw = pd.read_csv(self.stock_data_path + stock_code + '_with_indicator.csv', index_col=False)
+        elif self.data_type == 'minute':
+            raw = pd.read_csv(self.stock_data_path + stock_code + '.csv', index_col=False)
         raw = raw.dropna(axis=0, how='any')
         data = np.array(raw)
         data = fill_inf(data)
@@ -247,7 +257,7 @@ class TradeEnv(gym.Env):
         for i in range(0, data.shape[0]):
             line = data[i, :]
             date = datetime.strptime(str(line[0]), self.time_format)
-            res[date] = line[1:]
+            res[date] = line[1:self.feature_num + 1]
             time_list.append(date)
         return res, time_list
 
