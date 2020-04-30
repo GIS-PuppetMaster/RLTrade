@@ -34,7 +34,7 @@ class CustomPolicy(ActorCriticPolicy):
                     else:
                         training = True
                 else:
-                    raise ("不支持的Policy_arg:{}".format(k))
+                    raise Exception("不支持的Policy_arg:{}".format(k))
             # extracted_features = nature_cnn(self.processed_obs, **kwargs)
             extracted_features = self.processed_obs
             if len(ob_space.shape) > 1:
@@ -53,7 +53,7 @@ class CustomPolicy(ActorCriticPolicy):
                 elif isinstance(arch, dict):
                     arch_pi_and_vf = arch
                 else:
-                    raise ("自定义网络参数不合法: " + str(arch))
+                    raise Exception("自定义网络参数不合法: {}".format(arch))
             pi_layer_size = arch_pi_and_vf['pi']
             vf_layer_size = arch_pi_and_vf['vf']
             pi_h = extracted_features

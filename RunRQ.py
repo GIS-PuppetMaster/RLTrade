@@ -47,7 +47,7 @@ indicators = [
 ]
 skip_suspended = True
 id = "oalhl2pz"
-type = "last"
+type = "best"
 path = './RQStrategyTest.py'
 
 config = {
