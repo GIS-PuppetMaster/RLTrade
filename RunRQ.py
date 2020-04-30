@@ -6,8 +6,7 @@ from ta.volatility import *
 from ta.trend import *
 from ta.volume import *
 from ta.others import *
-
-stock_codes = ['000938_XSHE', '601318_XSHG', '601628_XSHG', '002049_XSHE', '000001_XSHE']
+from Util.Util import post_processor
 
 indicators = [
     ('RSI', rsi, ['close']),
@@ -47,9 +46,10 @@ indicators = [
     ('DLR', daily_log_return, ['close'])
 ]
 skip_suspended = True
-id = "j8cutel8"
+id = "oalhl2pz"
 type = "last"
 path = './RQStrategyTest.py'
+
 config = {
     "base": {
         "start_date": "2017-01-03",
@@ -91,7 +91,24 @@ config = {
 }
 if __name__ == '__main__':
     folder_name, _, max_file_name = find_model(id, type)
-    for stock_code in stock_codes:
+    import yaml
+    with open(os.path.join('./wandb', folder_name, 'config.yaml'), 'r') as f:
+        conf = f.read()
+    conf = yaml.load(conf)
+    conf['agent_config'] = conf['agent_config']['value']
+    conf['train_env_config'] = conf['train_env_config']['value']
+    conf['eval_env_config'] = conf['eval_env_config']['value']
+    if conf['train_env_config']['post_processor'] == 'post_processor':
+        conf['train_env_config']['post_processor'] = post_processor
+    else:
+        raise Exception("train_env_config:post_processor为不支持的类型{}".format(conf['train_env_config']['post_processor']))
+    if conf['eval_env_config']['post_processor'] == 'post_processor':
+        conf['eval_env_config']['post_processor'] = post_processor
+    else:
+        raise Exception("eval_env_config:post_processor为不支持的类型{}".format(conf['eval_env_config']['post_processor']))
+    globals().update(conf)
+    globals().update(conf['agent_config'])
+    for stock_code in conf['train_env_config']['stock_codes']:
         stock_code = stock_code.replace("_", ".")
         config['base']['benchmark'] = stock_code
         plot_save_path = os.path.join(os.getcwd(), 'TestResult', folder_name, 'RQTest', max_file_name,

@@ -3,6 +3,8 @@ import tensorflow as tf
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 import warnings
+from stable_baselines import TRPO
+
 warnings.filterwarnings('ignore')
 
 scaler = StandardScaler()
@@ -34,7 +36,6 @@ def post_processor(state, agent_state):
     else:
         price = state.reshape(60, 26)
         return scaler.fit_transform(price).flatten()
-
 
 
 def del_file(path_data):
@@ -69,15 +70,19 @@ def fill_inf(array):
     return array
 
 
-def find_model(id, useVersion="final", main_path="./"):
+def find_model(id, useVersion="final", main_path="./", timestamp=None):
     if id is None or id == "":
         raise ("id不能为空")
     fl = os.listdir('./wandb/')
     folder_name = None
     for file in fl:
-        ID = file.split("-")[-1]
+        file_ele = file.split("-")
+        ID = file_ele[-1]
         if id == ID:
-            folder_name = file
+            if timestamp is None or timestamp=="":
+                folder_name = file
+            elif file_ele[-2] == timestamp:
+                folder_name = file
     if folder_name is None:
         raise ("未找到包含id:{}的文件夹".format(id))
     if useVersion == "last" or (useVersion == 'final' and not os.path.exists(
@@ -103,3 +108,12 @@ def find_model(id, useVersion="final", main_path="./"):
         max_file_name = useVersion
     return folder_name, model_path, max_file_name
 
+def LoadCustomPolicyForTest(model_path):
+    data, params = TRPO._load_from_file(model_path)
+    # 设置dropout比率为0.，模型内部会自动设置training为False
+    data['policy_kwargs']['dropout_rate'] = 0.
+    model = TRPO(policy=data["policy"], env=None, _init_setup_model=False)
+    model.__dict__.update(data)
+    model.setup_model()
+    model.load_parameters(params)
+    return model

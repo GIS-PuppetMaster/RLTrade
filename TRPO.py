@@ -4,9 +4,7 @@ from TradeEnv import TradeEnv
 from Util.Callback import CustomCallback
 from Util.BestModelCallback import *
 from stable_baselines.common.callbacks import *
-from Util.CustomPolicy import CustomPolicy
 from Util.Util import find_model
-from Config import *
 import wandb
 import shutil
 
@@ -21,21 +19,31 @@ def make_env():
 if __name__ == '__main__':
     load_checkpoint = False
     load_id = ""
+    timestamp = ""
     model_path = None
     if load_id != "":
         load_checkpoint = True
-    os.environ["CUDA_VISIBLE_DEVICES"] = GPU
     if load_checkpoint:
-        wandb.init(project='Stable-BaselineTradingV2', sync_tensorboard=True, config=config, id=load_id, resume="must")
-        folder_name, model_path, _ = find_model(id=load_id, useVersion="last")
+        folder_name, model_path, _ = find_model(id=load_id, useVersion="last", timestamp=timestamp)
         try:
+            # 备份原来根目录下的Config.py
             os.rename('./Config.py', './Config_old.py')
-        except :
+        except:
             pass
-        shutil.copyfile('./Config.py', os.path.join('./wandb', folder_name, 'Config.py'))
+        # 使用id下的Config.py
+        shutil.copyfile(os.path.join('./wandb', folder_name, 'Config.py'), './Config.py',)
+        # from Config import GPU, eval_env_config, config, train_env_config, n_training_envs, save_freq, n_eval_episodes, \
+        #     eval_freq, policy_args, episode, EP_LEN, seed
+        from Config import *
+        wandb.init(project='Stable-BaselineTradingV2', sync_tensorboard=True, config=config, id=load_id, resume="must")
     else:
+        from Config import *
+
         wandb.init(project='Stable-BaselineTradingV2', sync_tensorboard=True, config=config)
-    shutil.copyfile('./Config.py', os.path.join(wandb.run.dir, 'Config.py'))
+        shutil.copyfile('./Config.py', os.path.join(wandb.run.dir, 'Config.py'))
+    from Util.CustomPolicy import CustomPolicy
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = GPU
     eval_env = TradeEnv(**eval_env_config)
     eval_env.seed(seed)
     env = DummyVecEnv([make_env for _ in range(n_training_envs)])

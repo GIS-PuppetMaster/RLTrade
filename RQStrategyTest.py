@@ -1,9 +1,7 @@
 # coding=utf-8
 from stable_baselines import TRPO
-from Config import *
 from sklearn.preprocessing import StandardScaler
 from RunRQ import *
-from Util.CustomPolicy import LoadCustomPolicyForTest
 from Util.Util import *
 
 
@@ -43,7 +41,25 @@ def init(context):
     import os
     strategy_file_path = context.config.base.strategy_file
 
-    _, model_path, _ = find_model(id, type, os.path.dirname(strategy_file_path))
+    folder_name, model_path, _ = find_model(id, type, os.path.dirname(strategy_file_path))
+    # 恢复配置文件
+    import yaml
+    with open(os.path.join('./wandb', folder_name, 'config.yaml'), 'r') as f:
+        conf = f.read()
+    conf = yaml.load(conf)
+    conf['agent_config'] = conf['agent_config']['value']
+    conf['train_env_config'] = conf['train_env_config']['value']
+    conf['eval_env_config'] = conf['eval_env_config']['value']
+    if conf['train_env_config']['post_processor'] == 'post_processor':
+        conf['train_env_config']['post_processor'] = post_processor
+    else:
+        raise Exception("train_env_config:post_processor为不支持的类型{}".format(conf['train_env_config']['post_processor']))
+    if conf['eval_env_config']['post_processor'] == 'post_processor':
+        conf['eval_env_config']['post_processor'] = post_processor
+    else:
+        raise Exception("eval_env_config:post_processor为不支持的类型{}".format(conf['eval_env_config']['post_processor']))
+    globals().update(conf)
+    globals().update(conf['agent_config'])
     logger.info('model_path:' + model_path)
     model = LoadCustomPolicyForTest(model_path)
     context.model = model
@@ -77,7 +93,7 @@ def handle_bar(context, bar):
     # 获取资金
     money = context.portfolio.cash
     # 归一化agent状态并添加到s中
-    if agent_state:
+    if agent_state=='True':
         s = np.append(s, log10plus1R(np.array([money, stock_amount])) / 10)
     # 归一化
     # s = log10plus1R(s)/10

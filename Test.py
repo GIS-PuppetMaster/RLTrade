@@ -1,26 +1,32 @@
 import os
 import shutil
-from Util.Util import find_model
-
-
+from Util.Util import *
+from TradeEnv import TradeEnv
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def test(save_fig, id, useVersion="final"):
     folder_name, model_path, max_file_name = find_model(id, useVersion)
     # 恢复配置文件
-    os.rename('./Config.py', './Config_old.py')
-    shutil.copyfile(os.path.join('./wandb', folder_name, 'Config.py'), './Config.py')
-    from Config import eval_env_config, seed, n_eval_episodes
-    from TradeEnv import TradeEnv
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    from Util.CustomPolicy import LoadCustomPolicyForTest
-    import numpy as np
-    os.remove('./Config.py')
-    os.rename('./Config_old.py', './Config.py')
-    # folder_name = 'oldEnvOldCheckpoint'
-    # max_file_name = 'rl_model_25589760_steps.zip'
-    # model_path = './checkpoints/small_net_5stocks_regularize_StandardScaler/'+max_file_name
+    import yaml
+    with open(os.path.join('./wandb', folder_name, 'config.yaml'), 'r') as f:
+        conf = f.read()
+    conf = yaml.load(conf)
+    conf['agent_config'] = conf['agent_config']['value']
+    conf['train_env_config'] = conf['train_env_config']['value']
+    conf['eval_env_config'] = conf['eval_env_config']['value']
+    if conf['train_env_config']['post_processor'] == 'post_processor':
+        conf['train_env_config']['post_processor'] = post_processor
+    else:
+        raise Exception("train_env_config:post_processor为不支持的类型{}".format(conf['train_env_config']['post_processor']))
+    if conf['eval_env_config']['post_processor'] == 'post_processor':
+        conf['eval_env_config']['post_processor'] = post_processor
+    else:
+        raise Exception("eval_env_config:post_processor为不支持的类型{}".format(conf['eval_env_config']['post_processor']))
+    globals().update(conf)
+    globals().update(conf['agent_config'])
     print(model_path)
     model = LoadCustomPolicyForTest(model_path)
     mode = 'test'
@@ -73,6 +79,6 @@ def test(save_fig, id, useVersion="final"):
 
 
 if __name__ == "__main__":
-    id = "0itx5mpc"
+    id = "oalhl2pz"
     test(True, id, "final")
     test(True, id, "best")

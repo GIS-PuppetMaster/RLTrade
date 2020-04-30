@@ -5,18 +5,9 @@ from stable_baselines.common.policies import ActorCriticPolicy, register_policy,
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines import A2C
 from Config import seed
-from stable_baselines import TRPO
 
 
-def LoadCustomPolicyForTest(model_path):
-    data, params = TRPO._load_from_file(model_path)
-    # 设置dropout比率为0.，模型内部会自动设置training为False
-    data['policy_kwargs']['dropout_rate'] = 0.
-    model = TRPO(policy=data["policy"], env=None, _init_setup_model=False)
-    model.__dict__.update(data)
-    model.setup_model()
-    model.load_parameters(params)
-    return model
+
 
 
 class CustomPolicy(ActorCriticPolicy):
