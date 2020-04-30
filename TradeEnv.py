@@ -273,7 +273,7 @@ class TradeEnv(gym.Env):
         if self.agent_state:
             state = np.append(state, np.array([self.money, self.stock_amount]))
         if self.post_processor is not None:
-            state = self.post_processor(state, self.agent_state)
+            state = self.post_processor(state, self.agent_state, self.obs_time // self.obs_delta_frequency)
         return state
 
     def draw(self):

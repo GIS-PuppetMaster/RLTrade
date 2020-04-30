@@ -5,7 +5,7 @@ from TradeEnv import TradeEnv
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
-
+import traceback
 
 def test(save_fig, id, useVersion="final"):
     folder_name, model_path, max_file_name = find_model(id, useVersion)
@@ -69,12 +69,13 @@ def test(save_fig, id, useVersion="final"):
     sns.tsplot(data=profit, time=np.arange(0, profit.shape[1]), ax=ax, color='r')
     sns.tsplot(data=base, time=np.arange(0, base.shape[1]), ax=ax, color='b')
     if save_fig:
-        if not os.path.exists('./TestResult/' + folder_name + '/'):
-            os.makedirs('./TestResult/' + folder_name + '/')
+        save_path = os.path.join('./TestResult', folder_name, max_file_name)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
         try:
-            plt.savefig('./TestResult/' + folder_name + '/' + max_file_name + '.png')
-        except:
-            print('reward图片被占用，无法写入')
+            plt.savefig(os.path.join(save_path,'test.png'))
+        except Exception as e:
+            traceback.print_exception(e)
     return plt
 
 
