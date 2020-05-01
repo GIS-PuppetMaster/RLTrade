@@ -21,7 +21,7 @@ class TradeEnv(gym.Env):
                  result_path="E:/运行结果/train/", principal=1e5, origin_stock_amount=0, poundage_rate=5e-3,
                  time_format="%Y-%m-%d", auto_open_result=False, reward_verbose=1,
                  post_processor=None, start_index_bound=None, end_index_bound=None, trade_time='open', mode='test',
-                 agent_state=True, data_type='day', feature_num=26):
+                 agent_state=True, data_type='day', feature_num=26, noise_rate=0):
         """
                 :param start_episode: 起始episode
                 :param episode_len: episode长度
@@ -38,6 +38,10 @@ class TradeEnv(gym.Env):
                 :param trade_time: 交易时间，open/close
                 :param mode: 环境模式，train/test, train模式下会使用wandb记录日志
                 :param agent_state: 是否添加agent状态（资金、头寸）到环境状态中
+                :param data_type: 数据类型，日级/分钟级，取值：'day'/'minute'
+                :param feature_num: 特征数目
+                :param 噪声比率， 定义为原始价格数据+标准正态分布噪声*（数据每列方差*noise_rate），也就是加上mean=0，std=noise_rate倍数据std的噪声
+                        若为0.则不添加噪声
                 :return:
                 """
         super(TradeEnv, self).__init__()
@@ -55,6 +59,7 @@ class TradeEnv(gym.Env):
         assert data_type == 'day' or data_type == 'minute'
         self.data_type = data_type
         self.feature_num = feature_num
+        self.noise_rate = noise_rate
         self.stock_datas = {stock_code: self.read_stock_data(stock_code) for stock_code in self.stock_codes}
         self.reward_verbose = reward_verbose
         self.obs_time = obs_time_size
@@ -64,7 +69,8 @@ class TradeEnv(gym.Env):
         if agent_state:
             self.observation_space = spaces.Box(
                 low=np.array(
-                    [float('-inf') for _ in range(self.feature_num * (self.obs_time // self.obs_delta_frequency))] + [0, 0]),
+                    [float('-inf') for _ in range(self.feature_num * (self.obs_time // self.obs_delta_frequency))] + [0,
+                                                                                                                      0]),
                 high=np.array(
                     [float('inf') for _ in range(self.feature_num * (self.obs_time // self.obs_delta_frequency) + 2)]))
         else:
@@ -279,6 +285,8 @@ class TradeEnv(gym.Env):
                 self.done = True
         stock_state = np.flip(stock_state, axis=0)
         state = stock_state.astype(np.float32)
+        state = (state.std(axis=0) * self.noise_rate) * np.random.randn(state.shape[0], state.shape[1]) + state
+        # state = np.diff(state, axis=0, n=1) / state[1:, :]
         state = state.flatten()
         if self.agent_state:
             state = np.append(state, np.array([self.money, self.stock_amount]))
