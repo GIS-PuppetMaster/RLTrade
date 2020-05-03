@@ -7,6 +7,8 @@ from stable_baselines.common.callbacks import *
 from Util.Util import find_model
 import wandb
 import shutil
+from Config import *
+from Util.CustomPolicy import CustomPolicy
 
 
 def make_env():
@@ -25,23 +27,29 @@ if __name__ == '__main__':
         load_checkpoint = True
     if load_checkpoint:
         folder_name, model_path, _ = find_model(id=load_id, useVersion="last", timestamp=timestamp)
-        try:
-            # 备份原来根目录下的Config.py
-            os.rename('./Config.py', './Config_old.py')
-        except:
-            pass
-        # 使用id下的Config.py
-        shutil.copyfile(os.path.join('./wandb', folder_name, 'Config.py'), './Config.py',)
-        # from Config import GPU, eval_env_config, config, train_env_config, n_training_envs, save_freq, n_eval_episodes, \
-        #     eval_freq, policy_args, episode, EP_LEN, seed
-        from Config import *
+        import yaml
+
+        with open(os.path.join('./wandb', folder_name, 'config.yaml'), 'r') as f:
+            conf = f.read()
+        conf = yaml.load(conf)
+        conf['agent_config'] = conf['agent_config']['value']
+        conf['train_env_config'] = conf['train_env_config']['value']
+        conf['eval_env_config'] = conf['eval_env_config']['value']
+        if conf['train_env_config']['post_processor'] == 'post_processor':
+            conf['train_env_config']['post_processor'] = post_processor
+        else:
+            raise Exception(
+                "train_env_config:post_processor为不支持的类型{}".format(conf['train_env_config']['post_processor']))
+        if conf['eval_env_config']['post_processor'] == 'post_processor':
+            conf['eval_env_config']['post_processor'] = post_processor
+        else:
+            raise Exception("eval_env_config:post_processor为不支持的类型{}".format(conf['eval_env_config']['post_processor']))
+        globals().update(conf)
+        globals().update(conf['agent_config'])
         wandb.init(project='Stable-BaselineTradingV2', sync_tensorboard=True, config=config, id=load_id, resume="must")
     else:
-        from Config import *
-
         wandb.init(project='Stable-BaselineTradingV2', sync_tensorboard=True, config=config)
         shutil.copyfile('./Config.py', os.path.join(wandb.run.dir, 'Config.py'))
-    from Util.CustomPolicy import CustomPolicy
 
     os.environ["CUDA_VISIBLE_DEVICES"] = GPU
     eval_env = TradeEnv(**eval_env_config)
@@ -56,7 +64,7 @@ if __name__ == '__main__':
     model = TRPO(CustomPolicy, env, verbose=1, tensorboard_log="./log/", seed=seed, policy_kwargs=policy_args)
     if load_checkpoint:
         print("载入断点:{}".format(model_path))
-        model.load(model_path)
+        model.load(model_path, env=env)
     model.learn(total_timesteps=episode * EP_LEN, callback=[checkPointCallback, saveBestCallback],
                 reset_num_timesteps=not load_checkpoint)
     model.save(os.path.join(wandb.run.dir, 'final_model'))
