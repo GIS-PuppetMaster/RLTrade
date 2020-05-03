@@ -21,7 +21,7 @@ class TradeEnv(gym.Env):
                  result_path="E:/运行结果/train/", principal=1e5, origin_stock_amount=0, poundage_rate=5e-3,
                  time_format="%Y-%m-%d", auto_open_result=False, reward_verbose=1,
                  post_processor=None, start_index_bound=None, end_index_bound=None, trade_time='open', mode='test',
-                 agent_state=True, data_type='day', feature_num=26, noise_rate=0):
+                 agent_state=True, data_type='day', feature_num=26, noise_rate=0.):
         """
                 :param start_episode: 起始episode
                 :param episode_len: episode长度

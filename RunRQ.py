@@ -46,7 +46,7 @@ indicators = [
     ('DLR', daily_log_return, ['close'])
 ]
 skip_suspended = True
-id = "oalhl2pz"
+id = "aq8kk9kk"
 type = "best"
 path = './RQStrategyTest.py'
 
@@ -84,7 +84,7 @@ config = {
         },
         "sys_simulation": {
             "enabled": True,
-            "slippage": 0.0,
+            "slippage": 0.,
             "matching_type": "next_bar",
         }
     }

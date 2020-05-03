@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import traceback
 
-def test(save_fig, id, useVersion="final"):
-    folder_name, model_path, max_file_name = find_model(id, useVersion)
+def test(save_fig, id, useVersion="final", timestamp=None):
+    folder_name, model_path, max_file_name = find_model(id, useVersion, timestamp=timestamp)
     # 恢复配置文件
     import yaml
     with open(os.path.join('./wandb', folder_name, 'config.yaml'), 'r') as f:
@@ -80,6 +80,7 @@ def test(save_fig, id, useVersion="final"):
 
 
 if __name__ == "__main__":
-    id = "ixj0j03t"
-    test(True, id, "final")
-    test(True, id, "best")
+    id = "aq8kk9kk"
+    timestamp = ""
+    test(True, id, "final", timestamp)
+    test(True, id, "best", timestamp)
