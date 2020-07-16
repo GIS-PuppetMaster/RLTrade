@@ -82,6 +82,6 @@ def test(save_fig, id, useVersion="final", timestamp=None):
 
 if __name__ == "__main__":
     id = "aq8kk9kk"
-    timestamp = "20200502_021725"
-    test(True, id, "final", timestamp)
+    timestamp = ""
+    # test(True, id, "final", timestamp)
     test(True, id, "best", timestamp)

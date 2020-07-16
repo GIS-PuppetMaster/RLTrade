@@ -86,10 +86,9 @@ class TradeEnv(gym.Env):
         assert mode == "train" or mode == "test" or mode == "eval"
         self.mode = mode
         self.start_index_bound = self.obs_time
-        if start_index_bound is not None:
-            assert self.start_index_bound <= start_index_bound
-            self.start_index_bound = start_index_bound
+        self.customize_start_index_bound = start_index_bound
         self.customize_end_index_bound = end_index_bound
+        self.reset()
 
     def seed(self, seed=None):
         np.random.seed(seed)
@@ -102,11 +101,21 @@ class TradeEnv(gym.Env):
             self.stock_code = np.random.choice(self.stock_codes)
         # 读取预存的数据
         self.stock_data, self.keys = self.stock_datas[self.stock_code]
+        data_len = len(self.stock_data)
         # 设置终止边界
         if self.customize_end_index_bound is not None:
-            self.end_index_bound = len(self.stock_data) + self.customize_end_index_bound
+            self.end_index_bound = data_len + self.customize_end_index_bound
         else:
-            self.end_index_bound = len(self.stock_data) - self.episode_len
+            self.end_index_bound = data_len - self.episode_len
+        # 设置起始边界
+        if self.customize_start_index_bound is not None:
+            if self.customize_start_index_bound < 0:
+                temp_start_index_bound = data_len + self.customize_start_index_bound
+                assert self.obs_time <= temp_start_index_bound
+                self.start_index_bound = temp_start_index_bound
+            else:
+                assert self.obs_time <= self.customize_start_index_bound
+                self.start_index_bound = self.customize_start_index_bound
         assert self.start_index_bound < self.end_index_bound
 
         # 随机初始化时间
