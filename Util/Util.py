@@ -52,7 +52,7 @@ def del_file(path_data):
 
 
 def gelu(input_tensor):
-    cdf = 0.5 * (1.0 + tf.erf(input_tensor / tf.sqrt(2.0)))
+    cdf = 0.5 * input_tensor * (1.0 + tf.erf(input_tensor / tf.sqrt(2.0)))
     return input_tensor * cdf
 
 
@@ -79,7 +79,7 @@ def find_model(id, useVersion="final", main_path="./", timestamp=None):
         file_ele = file.split("-")
         ID = file_ele[-1]
         if id == ID:
-            if timestamp is None or timestamp=="":
+            if timestamp is None or timestamp == "":
                 folder_name = file
             elif file_ele[-2] == timestamp:
                 folder_name = file
@@ -107,6 +107,7 @@ def find_model(id, useVersion="final", main_path="./", timestamp=None):
         model_path = os.path.join(main_path, 'wandb', folder_name, 'checkpoints', useVersion)
         max_file_name = useVersion
     return folder_name, model_path, max_file_name
+
 
 def LoadCustomPolicyForTest(model_path):
     data, params = TRPO._load_from_file(model_path)

@@ -4,6 +4,7 @@ from TradeEnv import TradeEnv
 from Util.Callback import CustomCallback
 from Util.BestModelCallback import *
 from stable_baselines.common.callbacks import *
+from stable_baselines.ddpg.policies import MlpPolicy
 from Util.Util import find_model
 import wandb
 import shutil
@@ -62,6 +63,7 @@ if __name__ == '__main__':
                                       n_eval_episodes=n_eval_episodes,
                                       eval_freq=eval_freq)
     model = TRPO(CustomPolicy, env, verbose=1, tensorboard_log="./log/", seed=seed, policy_kwargs=policy_args)
+    # model = DDPG(policy=MlpPolicy ,env=env, verbose=1, tensorboard_log="./log/", seed=seed)
     if load_checkpoint:
         print("载入断点:{}".format(model_path))
         model.load(model_path, env=env)

@@ -44,6 +44,8 @@ def test(save_fig, id, useVersion="final", timestamp=None):
         flag = False
         for step in range(250):
             a, _ = model.predict(s)
+            # if a!=0:
+            #     a = -1 if a<0 else 1
             s, r, done, _ = env.step(a)
             if s is None or r is None:
                 flag = True
