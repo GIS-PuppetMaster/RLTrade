@@ -53,7 +53,7 @@ path = './RQStrategyTest.py'
 config = {
     "base": {
         "start_date": "2017-01-03",
-        "end_date": "2020-04-21",
+        "end_date": "2020-07-07",
         "frequency": "1d",
         "accounts": {
             "stock": 1e5

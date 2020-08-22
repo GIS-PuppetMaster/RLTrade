@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/PreTrainedEncoder/Encoder.py" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/wandb/run-20200430_080932-0si2vfsi/config.yaml" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/wandb/run-20200430_080957-oalhl2pz/config.yaml" charset="GBK" />
     <file url="PROJECT" charset="GBK" />
