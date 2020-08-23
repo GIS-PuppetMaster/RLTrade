@@ -10,7 +10,7 @@ import wandb
 import shutil
 from Config import *
 from Util.CustomPolicy import CustomPolicy
-
+import argparse
 
 def make_env():
     env = TradeEnv(**train_env_config)
@@ -20,12 +20,19 @@ def make_env():
 
 
 if __name__ == '__main__':
-    load_checkpoint = False
-    load_id = ""
-    timestamp = ""
-    model_path = None
-    if load_id != "":
-        load_checkpoint = True
+    argparse = argparse.ArgumentParser()
+    argparse.add_argument('--load_checkpoint', type=bool, default=False)
+    argparse.add_argument('--with_wandb', type=bool, default=True)
+    argparse.add_argument('--load_id', type=str, default='')
+    argparse.add_argument('--timestamp', type=str, default='')
+    argparse.add_argument('--model_path', type=str, default=None)
+    args = argparse.parse_args()
+    load_checkpoint = args.load_checkpoint
+    load_id = args.load_id
+    timestamp = args.timestamp
+    model_path = args.model_path
+    if load_id != "" and not load_checkpoint:
+        raise Exception(f"load_id:{load_id} doesn't match load_checkpoint:{load_checkpoint}")
     if load_checkpoint:
         folder_name, model_path, _ = find_model(id=load_id, useVersion="last", timestamp=timestamp)
         import yaml
@@ -47,9 +54,11 @@ if __name__ == '__main__':
             raise Exception("eval_env_config:post_processor为不支持的类型{}".format(conf['eval_env_config']['post_processor']))
         globals().update(conf)
         globals().update(conf['agent_config'])
-        wandb.init(project='Stable-BaselineTradingV2', sync_tensorboard=True, config=config, id=load_id, resume="must")
+        if args.with_wandb:
+            wandb.init(project='Stable-BaselineTradingV2', sync_tensorboard=True, config=config, id=load_id, resume="must")
     else:
-        wandb.init(project='Stable-BaselineTradingV2', sync_tensorboard=True, config=config)
+        if args.with_wandb:
+            wandb.init(project='Stable-BaselineTradingV2', sync_tensorboard=True, config=config)
         shutil.copyfile('./Config.py', os.path.join(wandb.run.dir, 'Config.py'))
 
     os.environ["CUDA_VISIBLE_DEVICES"] = GPU

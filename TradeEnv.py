@@ -7,6 +7,7 @@ from datetime import datetime
 from Util.Util import *
 import numpy as np
 import wandb
+from collections import OrderedDict
 
 """
 日间择时，开盘或收盘交易
@@ -60,7 +61,7 @@ class TradeEnv(gym.Env):
         self.data_type = data_type
         self.feature_num = feature_num
         self.noise_rate = noise_rate
-        self.stock_datas = {stock_code: self.read_stock_data(stock_code) for stock_code in self.stock_codes}
+        self.stock_datas, self.time_dict = self.read_stock_data(stock_codes)
         self.reward_verbose = reward_verbose
         self.obs_time = obs_time_size
         self.obs_delta_frequency = obs_delta_frequency
@@ -259,22 +260,51 @@ class TradeEnv(gym.Env):
         else:
             self.done = True
 
-    def read_stock_data(self, stock_code):
-        if self.data_type == 'day':
-            raw = pd.read_csv(self.stock_data_path + stock_code + '_with_indicator.csv', index_col=False)
-        elif self.data_type == 'minute':
-            raw = pd.read_csv(self.stock_data_path + stock_code + '.csv', index_col=False)
-        raw = raw.dropna(axis=0, how='any')
-        data = np.array(raw)
-        data = fill_inf(data)
-        res = {}
-        time_list = []
-        for i in range(0, data.shape[0]):
-            line = data[i, :]
-            date = datetime.strptime(str(line[0]), self.time_format)
-            res[date] = line[1:self.feature_num + 1]
-            time_list.append(date)
-        return res, time_list
+    def read_stock_data(self, stock_codes):
+        stocks = {}
+        date_index = []
+        # in order by stock_code
+        stock_codes = sorted(stock_codes)
+        for stock_code in stock_codes:
+            if self.data_type == 'day':
+                raw = pd.read_csv(self.stock_data_path + stock_code + '_with_indicator.csv', index_col=False)
+            else:
+                raise Exception(f"Wrong data type for:{self.data_type}")
+            raw_moneyflow = pd.read_csv(self.stock_data_path + stock_code + '_moneyflow.csv', index_col=False)[
+                ['date', 'change_pct', 'net_pct_main', 'net_pct_xl', 'net_pct_l', 'net_pct_m', 'net_pct_s']].apply(
+                lambda x: x / 100 if isinstance(x[1], np.float64) else x)
+            raw = pd.merge(raw, raw_moneyflow, left_on='Unnamed: 0', right_on='date', sort=False, copy=False).drop(
+                'date', 1).rename(columns={'Unnamed: 0':'date'})
+            raw['stock_code'] = stock_code
+            col_name = raw.columns.tolist()
+            col_name.pop(col_name.index('stock_code'))
+            col_name.insert(1, 'stock_code')
+            raw = raw.reindex(columns=col_name)
+            raw.fillna(method='ffill', inplace=True)
+            date_index.append(np.array(raw['date']))
+            raw.set_index('date')
+            stocks[stock_code] = raw
+            # data = np.array(raw)
+            # data = fill_inf(data)
+            # res = {}
+            # time_list = []
+            # for i in range(0, data.shape[0]):
+            #     line = data[i, :]
+            #     date = datetime.strptime(str(line[0]), self.time_format)
+            #     res[date] = line[1:self.feature_num + 1]
+            #     time_list.append(date)
+            # stocks_dict[stock_code] = res
+            # time_dict[stock_code] = time_list
+        # 生成各支股票数据按时间的交集
+        date_intersection = date_index[0]
+        for i in range(1, len(date_index)):
+            date_intersection = np.intersect1d(date_intersection, date_index[i])
+        date_intersection=date_intersection.tolist()
+        # 按交集选择股票数据
+        for key, value in stocks.items():
+            stocks[key] = value[date_intersection]
+        A = 1
+        # return stocks_dict, time_dict
 
     def get_state(self):
         stock_state = []

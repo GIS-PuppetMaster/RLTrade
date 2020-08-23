@@ -32,5 +32,5 @@ def split_data(stock_codes, input_postfix='.csv', output_postfix='_day.csv'):
 if __name__ == '__main__':
     with open('./000300_XSHG_list.pkl', 'rb') as f:
         stock_list = pk.load(f)
-    # split_data(stock_list)
+    split_data(stock_list)
     split_data(stock_list, '_moneyflow.csv', '_moneyflow.csv')
