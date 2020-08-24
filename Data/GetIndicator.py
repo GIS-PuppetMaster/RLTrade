@@ -81,10 +81,6 @@ def get_and_save_indicator(stock_list):
             # print("stock:" + stock)
             raw = get_indicator(raw)
             # print("----fillna----")
-
-
-
-
             # # 做diff处理
             # data = np.array(raw)
             # data = np.diff(data,axis=0)
@@ -94,3 +90,10 @@ def get_and_save_indicator(stock_list):
             # data = pd.DataFrame(data, index=index, columns=raw.columns)
             # print(raw.values.shape)
             raw.to_csv('./' + m + '/' + stock + '_with_indicator.csv')
+
+if __name__ == '__main__':
+    import pickle as pk
+    with open('./000300_XSHG_list.pkl', 'rb') as f:
+        stock_codes = pk.load(f)
+    stock_codes = [stock_code.replace('.', '_') for stock_code in stock_codes]
+    get_and_save_indicator(stock_codes)

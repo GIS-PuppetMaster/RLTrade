@@ -56,7 +56,7 @@ class CustomCallback(BaseCallback):
         """
         This event is triggered before updating the policy.
         """
-        self.model.get_env().render("manual")
+        self.model.get_env().render("hybrid")
 
     def _on_training_end(self) -> None:
         """

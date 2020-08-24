@@ -18,7 +18,11 @@ def split_data(stock_codes, input_postfix='.csv', output_postfix='_day.csv'):
         except Exception as e:
             stock_list.remove(stock.replace("_", "."))
             continue
-        df.set_index(["Unnamed: 0"], inplace=True)
+        if 'moneyflow' in input_postfix:
+            df.set_index(["date"], inplace=True)
+            df = df.drop('Unnamed: 0', axis=1)
+        else:
+            df.set_index(["Unnamed: 0"], inplace=True)
         # source_raw.sort_index(axis=0,ascending=True)
         # 截断train_time之后的
         new_train = df.truncate(after=train_time)

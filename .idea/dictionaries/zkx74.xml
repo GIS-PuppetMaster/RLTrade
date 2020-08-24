@@ -4,8 +4,10 @@
       <w>ffill</w>
       <w>gelu</w>
       <w>moneyflow</w>
+      <w>ndarray</w>
       <w>quant</w>
       <w>scaler</w>
+      <w>wandb</w>
       <w>xshe</w>
       <w>xshg</w>
     </words>

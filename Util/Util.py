@@ -24,18 +24,8 @@ def log10plus1R(x):
     return x
 
 
-def post_processor(state, agent_state, rows):
-    if agent_state:
-        price = state[0:-2]
-        s = state[-2:]
-        price = price.reshape(rows, -1)
-        price = scaler.fit_transform(price)
-        s = log10plus1R(s) / 10
-        # return log10plus1R(state) / 10
-        return np.append(price.flatten(), s)
-    else:
-        price = state.reshape(rows, -1)
-        return scaler.fit_transform(price).flatten()
+def post_processor(state):
+    return scaler.fit_transform(state)
 
 
 def del_file(path_data):
