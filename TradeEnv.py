@@ -380,7 +380,8 @@ class TradeEnv(gym.Env):
         if mode == 'hybrid':
             fig = make_subplots(rows=2, cols=2, subplot_titles=('回测详情', '奖励', '交易量'),
                                 specs=[[{"secondary_y": True}, {"secondary_y": False}],
-                                       [{"secondary_y": False}, {"secondary_y": False}]])
+                                       [{"secondary_y": False}, {"secondary_y": True}]], horizontal_spacing=0.07,
+                                vertical_spacing=0.07)
             fig.update_layout(dict(title="回测结果" + "     初始资金：" + str(
                 self.principal), paper_bgcolor='#000000', plot_bgcolor='#000000'))
             fig.update_layout(dict(
@@ -403,6 +404,9 @@ class TradeEnv(gym.Env):
                             titlefont={'color': 'orange'}, tickfont={'color': 'orange'},
                             showgrid=False,
                             zeroline=False, anchor='x4'),
+                yaxis6=dict(title='收益率', showgrid=False, zeroline=False, titlefont={'color': 'red'},
+                            tickfont={'color': 'red'}, anchor='x4', side='right', overlaying='y5'),
+                margin=dict(r=10)
             ))
             for i, stock_code in enumerate(self.stock_codes):
                 profit_list = raw_profit_array[:, i].tolist()
@@ -434,7 +438,7 @@ class TradeEnv(gym.Env):
                 trade_bar = dict(x=time_list,
                                  y=quant_list,
                                  name=f'交易量(手)',
-                                 marker_color='#000099',
+                                 marker=dict(color=['red' if quant > 0 else 'green' for quant in quant_list]),
                                  opacity=0.5, xaxis='x3',
                                  yaxis='y4')
                 amount_scatter = dict(x=time_list,
@@ -446,36 +450,40 @@ class TradeEnv(gym.Env):
                                       fillcolor='rgba(0,204,255,0.2)',
                                       opacity=0.6, xaxis='x',
                                       yaxis='y2', secondary_y=True)
-
+                vis = True if i == 0 else False
                 for scatter in [profit_scatter, base_scatter, amount_scatter]:
-                    fig.add_scatter(**scatter, row=1, col=1, visible=False)
-                fig.add_bar(**trade_bar, row=2, col=1, visible=False)
-                fig.add_scatter(**price_scatter, row=2, col=2, visible=False)
+                    fig.add_scatter(**scatter, row=1, col=1, visible=vis)
+                fig.add_bar(**trade_bar, row=2, col=1, visible=vis)
+                fig.add_scatter(**price_scatter, row=2, col=2, visible=vis)
 
             fig.add_scatter(**dict(x=time_list,
                                    y=profit_mean,
                                    line=dict(color='rgb(255,0,0)'),
                                    name='profit mean',
-                                   showlegend=True), row=1, col=2, visible=True)
+                                   showlegend=True), row=2, col=2, visible=True, xaxis='x4', yaxis='y5',
+                            secondary_y=True)
             fig.add_scatter(**dict(x=time_list + time_list[::-1],
                                    y=profit_max + profit_min,
                                    fill='toself',
                                    fillcolor='rgba(255,0,0,0.2)',
                                    line_color='rgba(255,255,255,0.1)',
                                    name='profit',
-                                   showlegend=False), row=1, col=2, visible=True)
+                                   showlegend=False), row=2, col=2, visible=True, xaxis='x4', yaxis='y5',
+                            secondary_y=True)
             fig.add_scatter(**dict(x=time_list,
                                    y=base_mean,
                                    line=dict(color='rgb(0,0,255)'),
                                    name='buy and hold mean',
-                                   showlegend=True), row=1, col=2, visible=True)
+                                   showlegend=True), row=2, col=2, visible=True, xaxis='x4', yaxis='y5',
+                            secondary_y=True)
             fig.add_scatter(**dict(x=time_list + time_list[::-1],
                                    y=base_max + base_min,
                                    fill='toself',
                                    fillcolor='rgba(0,0,255,0.2)',
                                    line_color='rgba(255,255,255,0.1)',
                                    name='buy and hold',
-                                   showlegend=False), row=1, col=2, visible=True)
+                                   showlegend=False), row=2, col=2, visible=True, xaxis='x4', yaxis='y5',
+                            secondary_y=True)
             reward_list = raw_reward_array.tolist()
             reward_scatter = dict(x=[i for i in range(len(reward_list))],
                                   y=reward_list,
@@ -484,23 +492,14 @@ class TradeEnv(gym.Env):
                                   mode='lines',
                                   opacity=1, xaxis='x2',
                                   yaxis='y3')
-            fig.add_scatter(**reward_scatter, row=1, col=2, visible=False)
+            fig.add_scatter(**reward_scatter, row=1, col=2, visible=True)
             steps = []
-            step = dict(
-                method="update",
-                args=[{'visible': [False] * (len(self.stock_codes) * 5 + 5)},
-                      {'title': f"平均回测结果, 初始资金：{self.principal}"}])
-            step['args'][0]['visible'][-1] = False
-            step['args'][0]['visible'][-2] = True
-            step['args'][0]['visible'][-3] = True
-            step['args'][0]['visible'][-4] = True
-            step['args'][0]['visible'][-5] = True
-            steps.append(step)
             for i in range(0, len(self.stock_codes) * 5, 5):
                 step = dict(
                     method="update",
                     args=[{'visible': [False] * (len(self.stock_codes) * 5 + 5)},
-                          {'title': f"{self.stock_codes[i // 5]}回测结果, 初始资金：{self.principal}"}]
+                          {'title': f"{self.stock_codes[i // 5]}回测结果, 初始资金：{self.principal}"}],
+                    label=self.stock_codes[i // 5],
                 )
                 step['args'][0]['visible'][i] = True
                 step['args'][0]['visible'][i + 1] = True
@@ -508,12 +507,16 @@ class TradeEnv(gym.Env):
                 step['args'][0]['visible'][i + 3] = True
                 step['args'][0]['visible'][i + 4] = True
                 step['args'][0]['visible'][-1] = True
+                step['args'][0]['visible'][-2] = True
+                step['args'][0]['visible'][-3] = True
+                step['args'][0]['visible'][-4] = True
+                step['args'][0]['visible'][-5] = True
                 steps.append(step)
             sliders = [dict(
                 active=0,
                 currentvalue={'prefix': 'StockCoder: '},
                 pad={'t': 50},
-                steps=steps
+                steps=steps,
             )]
             fig.update_layout(sliders=sliders)
         else:
