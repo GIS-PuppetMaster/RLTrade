@@ -108,12 +108,7 @@ class TradeEnv(gym.Env):
         self.done = False
         self.money = self.principal
         self.buy_value = np.zeros(shape=(len(self.stock_codes, )))
-        self.buy_quant = np.zeros(shape=(len(self.stock_codes, )))
-        self.weighted_buy_price = np.zeros(shape=(len(self.stock_codes, )))
         self.sold_value = np.zeros(shape=(len(self.stock_codes, )))
-        self.sold_quant = np.zeros(shape=(len(self.stock_codes, )))
-        self.weighted_sell_price = np.zeros(shape=(len(self.stock_codes, )))
-        self.profit_ratio = np.zeros(shape=(len(self.stock_codes, )))
         # 持有股票数目(股)
         self.stock_amount = [0] * len(self.stock_codes)
         # 上次购入股票所花金额
@@ -162,6 +157,8 @@ class TradeEnv(gym.Env):
         amount = np.array(self.stock_amount)
         # 计算股票数量时将停牌股票数量保持不变
         target_amount[nan_mask] = amount[nan_mask]
+        # if self.step_ > 1:
+        #     target_amount = amount
         # 实际交易多少手
         quant = target_amount - amount
         # assert (quant[nan_mask] == 0).all()
@@ -185,12 +182,7 @@ class TradeEnv(gym.Env):
         buy_quant[buy_quant < 0] = 0.
         buy_price = deepcopy(price)
         buy_price[nan_mask] = 0.
-        self.buy_value += buy_price * 100 * buy_quant
-        self.buy_quant += buy_quant
-        # 加权买价=（历史买入总价值(含当前))/(历史买入股数(含当前)) + 手续费率
-        weighted_buy_price = self.buy_value / (100 * self.buy_quant) + self.poundage_rate
-        # 不持有股票的结果为nan, 只更新本次买入股票的加权买价
-        self.weighted_buy_price[quant > 0] = weighted_buy_price[quant > 0]
+        self.buy_value += buy_price * 100 * buy_quant * (1 + self.poundage_rate)
 
         # 卖出量
         sell_quant = deepcopy(quant)
@@ -198,29 +190,29 @@ class TradeEnv(gym.Env):
         sell_quant = np.abs(sell_quant)
         sell_price = deepcopy(price)
         sell_price[nan_mask] = 0.
-        self.sold_value += sell_price * 100 * sell_quant
-        self.sold_quant += sell_quant
-        # 加权卖价 = (历史总卖出股票价值(含当前)+当前没卖出的价值)/(历史卖出股票股数(含当前)+当前持有) - 手续费率
-        weighted_sell_price = (self.sold_value + self.last_time_stock_value) / (
-                100 * (self.sold_quant + self.stock_amount)) - self.poundage_rate
-        self.weighted_sell_price = weighted_sell_price
-        # self.weighted_sell_price[quant >= 0] = price[quant >= 0]
-        # 收益率
-        profit_ratio = self.weighted_sell_price / self.weighted_buy_price - 1
-        mask = np.logical_and(~np.isnan(profit_ratio), ~np.isinf(profit_ratio))
-        self.profit_ratio[mask] = profit_ratio[mask]
+        self.sold_value += sell_price * 100 * (1 - self.poundage_rate) * sell_quant
+
+        # q用来计算每只股票当前一共交易了多少次
+        if self.step_==1:
+            q = np.expand_dims(quant,axis=0)
+        else:
+            q = np.concatenate([np.array([i[2] for i in self.trade_history]).astype(np.float32), np.expand_dims(quant, axis=0)], axis=0)
+        # ((历史卖出价值（扣除手续费）+当前价格下持有股票的价值)/历史买入花费（算手续费）-1) * 当前交易次数
+        # 前面那一坨算的是平均每次交易的收益率，要知道当前的总收益率，只需要乘以当前一共交易了几次
+        profit_ratio = ((self.sold_value + self.last_time_stock_value) / self.buy_value - 1) * np.count_nonzero(q, axis=0)
+        mask = np.logical_or(np.isnan(profit_ratio), np.isinf(profit_ratio))
+        profit_ratio[mask] = 0.
         # 计算下一状态和奖励
         # 如果采用t+1结算 and 交易了 则跳到下一天
         self.set_next_day()
         # 先添加到历史中，reward为空
         self.trade_history.append(
             [trade_time, price, quant, deepcopy(self.stock_amount), self.money, None, action,
-             deepcopy(self.last_time_stock_value), self.weighted_buy_price, self.weighted_sell_price,
-             deepcopy(self.profit_ratio)])
+             deepcopy(self.last_time_stock_value), profit_ratio])
         reward = self.get_reward(last_time_value)
         # 修改历史记录中的reward
         self.trade_history[-1][5] = reward
-        if self.mode=='train':
+        if self.mode == 'train':
             wandb.log({'episode': self.episode, 'reward': reward}, sync=False)
         return self.get_state(), reward, self.done, {}
 
@@ -340,7 +332,7 @@ class TradeEnv(gym.Env):
             return
         raw_time_array = np.array([i[0] for i in self.trade_history])
         time_list = raw_time_array.tolist()
-        raw_profit_array = np.array([i[10] for i in self.trade_history])
+        raw_profit_array = np.array([i[8] for i in self.trade_history])
         raw_price_array = pd.DataFrame(np.array([i[1] for i in self.trade_history]).astype(np.float32))
         raw_price_array.fillna(method='ffill', inplace=True)
         raw_price_array = np.array(raw_price_array)
@@ -502,21 +494,12 @@ class TradeEnv(gym.Env):
                                    fillcolor='rgba(68,105,255,0.2)',
                                    line_color='rgba(255,255,255,0)',
                                    name='buy and hold',
-                                   showlegend=True), row=1, col=2, visible=False, xaxis='x2', yaxis='y3')
-            # reward_list = raw_reward_array.tolist()
-            # reward_scatter = dict(x=[i for i in range(len(reward_list))],
-            #                       y=reward_list,
-            #                       name='reward',
-            #                       line=dict(color='#41AB5D'),
-            #                       mode='lines',
-            #                       opacity=1, xaxis='x5',
-            #                       yaxis='y6')
-            # fig.add_scatter(**reward_scatter, row=1, col=2, visible=True)
+                                   showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
             steps = []
             for i in range(0, len(self.stock_codes) * 5, 5):
                 step = dict(
                     method="update",
-                    args=[{'visible': [False] * (len(self.stock_codes) * 5 + 5)},
+                    args=[{'visible': [False] * (len(self.stock_codes) * 5 + 4)},
                           {'title': f"{self.stock_codes[i // 5]}回测结果, 初始资金：{self.principal}"}
                           ],
                     label=self.stock_codes[i // 5],
