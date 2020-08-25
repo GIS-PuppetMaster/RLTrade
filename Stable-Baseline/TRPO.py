@@ -1,12 +1,8 @@
-from stable_baselines import *
 from stable_baselines.common.env_checker import check_env
-from TradeEnv import TradeEnv
+from Env.TradeEnv import TradeEnv
 from Util.Callback import CustomCallback
 from Util.BestModelCallback import *
 from stable_baselines.common.callbacks import *
-from stable_baselines.ddpg.policies import MlpPolicy
-from Util.Util import find_model
-import wandb
 import shutil
 from Config import *
 from Util.CustomPolicy import CustomPolicy
@@ -37,7 +33,7 @@ if __name__ == '__main__':
         folder_name, model_path, _ = find_model(id=load_id, useVersion="last", timestamp=timestamp)
         import yaml
 
-        with open(os.path.join('./wandb', folder_name, 'config.yaml'), 'r') as f:
+        with open(os.path.join('../wandb', folder_name, 'config.yaml'), 'r') as f:
             conf = f.read()
         conf = yaml.load(conf)
         conf['agent_config'] = conf['agent_config']['value']
@@ -59,7 +55,7 @@ if __name__ == '__main__':
     else:
         if args.with_wandb:
             wandb.init(project='Stable-BaselineTradingV2', sync_tensorboard=True, config=config)
-        shutil.copyfile('./Config.py', os.path.join(wandb.run.dir, 'Config.py'))
+        shutil.copyfile('../Config.py', os.path.join(wandb.run.dir, 'Config.py'))
 
     os.environ["CUDA_VISIBLE_DEVICES"] = GPU
     eval_env = TradeEnv(**eval_env_config)
@@ -67,7 +63,8 @@ if __name__ == '__main__':
     env = DummyVecEnv([make_env for _ in range(n_training_envs)])
     del_file('E:\运行结果\TRPO\TRPO/train')
     monitorCallback = CustomCallback()
-    checkPointCallback = CheckpointCallback(save_freq=save_freq, save_path=os.path.join(wandb.run.dir, 'checkpoints'))
+    checkPointCallback = CheckpointCallback(save_freq=save_freq, save_path=os.path.join(wandb.run.dir,
+                                                                                        '../checkpoints'))
     saveBestCallback = MyEvalCallback(eval_env, best_model_save_path=wandb.run.dir,
                                       n_eval_episodes=n_eval_episodes,
                                       eval_freq=eval_freq)

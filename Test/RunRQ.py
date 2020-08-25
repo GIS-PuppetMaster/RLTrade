@@ -1,6 +1,6 @@
 from rqalpha import run_file
 import os
-from Test import find_model
+from Test.Test import find_model
 from ta.momentum import *
 from ta.volatility import *
 from ta.trend import *
@@ -48,7 +48,7 @@ indicators = [
 skip_suspended = True
 id = "aq8kk9kk"
 type = "best"
-path = './RQStrategyTest.py'
+path = 'RQStrategyTest.py'
 
 config = {
     "base": {
@@ -92,7 +92,7 @@ config = {
 if __name__ == '__main__':
     folder_name, _, max_file_name = find_model(id, type)
     import yaml
-    with open(os.path.join('./wandb', folder_name, 'config.yaml'), 'r') as f:
+    with open(os.path.join('../wandb', folder_name, 'config.yaml'), 'r') as f:
         conf = f.read()
     conf = yaml.load(conf)
     conf['agent_config'] = conf['agent_config']['value']
@@ -111,12 +111,12 @@ if __name__ == '__main__':
     for stock_code in conf['train_env_config']['stock_codes']:
         stock_code = stock_code.replace("_", ".")
         config['base']['benchmark'] = stock_code
-        plot_save_path = os.path.join(os.getcwd(), 'TestResult', folder_name, max_file_name,
+        plot_save_path = os.path.join(os.getcwd(), '../TestResult', folder_name, max_file_name,
                                       stock_code + ".png")
-        file_save_path = os.path.join(os.getcwd(), 'TestResult', folder_name, max_file_name,
+        file_save_path = os.path.join(os.getcwd(), '../TestResult', folder_name, max_file_name,
                                       stock_code + ".pkl")
-        if not os.path.exists(os.path.join(os.getcwd(), 'TestResult', folder_name, max_file_name)):
-            os.makedirs(os.path.join(os.getcwd(), 'TestResult', folder_name, max_file_name))
+        if not os.path.exists(os.path.join(os.getcwd(), '../TestResult', folder_name, max_file_name)):
+            os.makedirs(os.path.join(os.getcwd(), '../TestResult', folder_name, max_file_name))
         config['base']['stock_code'] = stock_code
         config['mod']['sys_analyser']['plot_save_file'] = plot_save_path
         config['mod']['sys_analyser']['output_file'] = file_save_path

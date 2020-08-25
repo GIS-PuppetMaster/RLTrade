@@ -242,7 +242,7 @@ class TradeEnv(gym.Env):
             self.done = True
 
     def read_stock_data(self, stock_codes, load_from_cache=False):
-        save_path = os.path.join(self.stock_data_path, 'EnvData.dill')
+        save_path = os.path.join(self.stock_data_path, '../Data/test/EnvData.dill')
         stocks = OrderedDict()
         date_index = []
         # in order by stock_code

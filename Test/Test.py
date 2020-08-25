@@ -1,7 +1,5 @@
-import os
-import shutil
 from Util.Util import *
-from TradeEnv import TradeEnv
+from Env.TradeEnv import TradeEnv
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,7 +9,7 @@ def test(save_fig, id, useVersion="final", timestamp=None):
     folder_name, model_path, max_file_name = find_model(id, useVersion, timestamp=timestamp)
     # 恢复配置文件
     import yaml
-    with open(os.path.join('./wandb', folder_name, 'config.yaml'), 'r') as f:
+    with open(os.path.join('../wandb', folder_name, 'config.yaml'), 'r') as f:
         conf = f.read()
     conf = yaml.load(conf)
     conf['agent_config'] = conf['agent_config']['value']
@@ -69,7 +67,7 @@ def test(save_fig, id, useVersion="final", timestamp=None):
     sns.tsplot(data=profit, time=np.arange(0, profit.shape[1]), ax=ax, color='r')
     sns.tsplot(data=base, time=np.arange(0, base.shape[1]), ax=ax, color='b')
     if save_fig:
-        save_path = os.path.join('./TestResult', folder_name, max_file_name)
+        save_path = os.path.join('../TestResult', folder_name, max_file_name)
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         try:

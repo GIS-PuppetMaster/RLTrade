@@ -1,8 +1,7 @@
 import pickle as pk
 from Util.Util import *
-from TradeEnv import TradeEnv
+from Env.TradeEnv import TradeEnv
 import numpy as np
-import random
 
 
 def softmax(x):

@@ -1,7 +1,5 @@
 # coding=utf-8
-from stable_baselines import TRPO
-from sklearn.preprocessing import StandardScaler
-from RunRQ import *
+from Test.RunRQ import *
 from Util.Util import *
 
 
@@ -44,7 +42,7 @@ def init(context):
     folder_name, model_path, _ = find_model(id, type, os.path.dirname(strategy_file_path))
     # 恢复配置文件
     import yaml
-    with open(os.path.join('./wandb', folder_name, 'config.yaml'), 'r') as f:
+    with open(os.path.join('../wandb', folder_name, 'config.yaml'), 'r') as f:
         conf = f.read()
     conf = yaml.load(conf)
     conf['agent_config'] = conf['agent_config']['value']
