@@ -1,5 +1,5 @@
 # coding=utf-8
-from Test.RunRQ import *
+from EvalAndTestUtil.RunRQ import *
 from Util.Util import *
 
 

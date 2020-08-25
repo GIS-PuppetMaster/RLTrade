@@ -1,14 +1,20 @@
 import os
-import tensorflow as tf
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 import warnings
-from stable_baselines import TRPO
 
 warnings.filterwarnings('ignore')
 
 scaler = StandardScaler()
 
+def get_submodule(sub_post_processor):
+    import importlib
+    module_name = sub_post_processor[0]
+    module = importlib.import_module(module_name)
+    # 递归导入
+    for j in range(1, len(sub_post_processor)):
+        module = module.__dict__[sub_post_processor[j]]
+    return module
 
 def log2plus1R(x):
     x = np.sign(x) * np.log2(np.abs(x + np.sign(x)))
@@ -42,6 +48,7 @@ def del_file(path_data):
 
 
 def gelu(input_tensor):
+    import tensorflow as tf
     cdf = 0.5 * (1.0 + tf.erf(input_tensor / tf.sqrt(2.0)))
     return input_tensor * cdf
 
@@ -99,6 +106,7 @@ def find_model(id, useVersion="final", main_path="./", timestamp=None):
     return folder_name, model_path, max_file_name
 
 def LoadCustomPolicyForTest(model_path):
+    from stable_baselines import TRPO
     data, params = TRPO._load_from_file(model_path)
     # 设置dropout比率为0.，模型内部会自动设置training为False
     data['policy_kwargs']['dropout_rate'] = 0.

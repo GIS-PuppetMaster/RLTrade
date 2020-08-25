@@ -1,3 +1,4 @@
+from stable_baselines import TRPO
 from stable_baselines.common.env_checker import check_env
 from Env.TradeEnv import TradeEnv
 from Util.Callback import CustomCallback

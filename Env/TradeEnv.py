@@ -1,32 +1,27 @@
-from copy import deepcopy
-
 import gym
 import pandas as pd
 import plotly as py
-import plotly.express as px
-import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 from gym import spaces
-from datetime import datetime, timedelta
+from datetime import datetime
 from Util.Util import *
 import numpy as np
 import wandb
 import dill
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 
 """
 日间择时，开盘或收盘交易
 """
 
 
-# noinspection PyAttributeOutsideInit
 class TradeEnv(gym.Env):
     def __init__(self, stock_data_path, start_episode=0, episode_len=720, obs_time_size=60,
-                 sim_delta_time=1, stock_codes='000938_XSHE',
+                 sim_delta_time=1, stock_codes=None,
                  result_path="E:/运行结果/train/", principal=1e7, poundage_rate=5e-3,
-                 time_format="%Y-%m-%d", auto_open_result=False, reward_verbose=1,
-                 post_processor=None, trade_time='open', mode='test',
-                 agent_state=True, data_type='day', feature_num=32, noise_rate=0., load_from_cache=False):
+                 time_format="%Y-%m-%d", auto_open_result=False,
+                 post_processor=None, trade_time='open',
+                 agent_state=True, data_type='day', feature_num=32, noise_rate=0., load_from_cache=True, wandb=False):
         """
                 :param start_episode: 起始episode
                 :param episode_len: episode长度
@@ -34,13 +29,13 @@ class TradeEnv(gym.Env):
                 :param stock_codes: 股票代码
                 :param stock_data_path: 数据路径
                 :param result_path: 绘图结果保存路径
+                :param post_processor: 状态后处理模块，负责标准化状态，[[]],[后处理stock_obs，后处理stock_position，后处理money],
+                                        post_processor[i][0]为模块绝对路径，递归导入后面部分
                 :param principal: 初始资金
                 :param poundage_rate: 手续费率
                 :param time_format: 数据时间格式 str
                 :param auto_open_result: 是否自动打开结果
-                :param reward_verbose: 0,1,2 不绘制reward，绘制单个reward（覆盖），绘制所有episode的reward
                 :param trade_time: 交易时间，open/close
-                :param mode: 环境模式，train/test, train模式下会使用wandb记录日志
                 :param agent_state: 是否添加agent状态（资金、头寸）到环境状态中
                 :param data_type: 数据类型，日级/分钟级，取值：'day'/'minute'
                 :param feature_num: 特征数目
@@ -49,6 +44,8 @@ class TradeEnv(gym.Env):
                 :return:
                 """
         super(TradeEnv, self).__init__()
+        if stock_codes is None:
+            stock_codes = ['000938_XSHE']
         self.delta_time = sim_delta_time
         self.stock_data_path = stock_data_path
         self.result_path = result_path
@@ -62,7 +59,7 @@ class TradeEnv(gym.Env):
         self.feature_num = feature_num
         self.noise_rate = noise_rate
         self.obs_time = obs_time_size
-        self.post_processor = post_processor
+        self.post_processor = [get_submodule(submodule) for submodule in post_processor]
         self.agent_state = agent_state
         self.load_from_cache = load_from_cache
         # raw_time_list包含了原始数据中的所有日期
@@ -70,20 +67,16 @@ class TradeEnv(gym.Env):
                                                                                                            load_from_cache)
         # time_list只包含交易环境可用的有效日期
         self.time_list = self.raw_time_list[self.obs_time:]
-        self.reward_verbose = reward_verbose
         self.action_space = spaces.Box(low=np.array([0 for _ in range(len(self.stock_codes))] + [0, ]),
                                        high=np.array([1 for _ in range(len(self.stock_codes))] + [1, ]))
-        obs_low = np.empty(shape=(len(self.stock_codes), self.obs_time, self.feature_num))
-        obs_low[...] = float('-inf')
-        obs_high = np.empty(shape=(len(self.stock_codes), self.obs_time, self.feature_num))
-        obs_high[...] = float('inf')
+        obs_low = np.full(np.empty(shape=(len(self.stock_codes), self.obs_time, self.feature_num)), float('-inf'))
+        obs_high = np.full(np.empty(shape=(len(self.stock_codes), self.obs_time, self.feature_num)), float('inf'))
         if agent_state:
+            assert len(self.post_processor) == 3
             position_low = np.zeros(shape=(2, len(self.stock_codes)))
-            position_high = np.zeros(shape=(2, len(self.stock_codes)))
-            position_high[...] = float('inf')
+            position_high = np.full(np.zeros(shape=(2, len(self.stock_codes))), float('inf'))
             money_low = np.zeros(shape=(1,))
-            money_high = np.zeros(shape=(1,))
-            money_high[...] = float('inf')
+            money_high = np.full(np.zeros(shape=(1,)), float('inf'))
             self.observation_space = spaces.Dict({'stock_obs': spaces.Box(low=obs_low, high=obs_high),
                                                   'stock_position': spaces.Box(low=position_low, high=position_high),
                                                   'money': spaces.Box(low=money_low, high=money_high)})
@@ -92,8 +85,7 @@ class TradeEnv(gym.Env):
         self.step_ = 0
         assert trade_time == "open" or trade_time == "close"
         self.trade_time = trade_time
-        assert mode == "train" or mode == "test" or mode == "eval"
-        self.mode = mode
+        self.wandb = wandb
         self.reset()
 
     def seed(self, seed=None):
@@ -139,7 +131,7 @@ class TradeEnv(gym.Env):
         # 此次调整后投入股市的资金
         target_money = self.money * action[-1]
         # 重新计算分配给每只股票的资金数目
-        action_masked = deepcopy(action[:-1])
+        action_masked = action[:-1].copy()
         action_masked[nan_mask] = 0.
         # 把错误分给停牌股票的资金按比例分配给未停牌股票
         action_masked /= action_masked.sum()
@@ -171,17 +163,17 @@ class TradeEnv(gym.Env):
         # 计算并更新当前每只未停牌股票的价值， 停牌股票价值保留上次计算结果
         self.last_time_stock_value[~nan_mask] = (self.stock_amount * price * 100)[~nan_mask]
 
-        buy_quant = deepcopy(quant)
+        buy_quant = quant.copy()
         buy_quant[buy_quant < 0] = 0.
-        buy_price = deepcopy(price)
+        buy_price = price.copy()
         buy_price[nan_mask] = 0.
         self.buy_value += buy_price * 100 * buy_quant * (1 + self.poundage_rate)
 
         # 卖出量
-        sell_quant = deepcopy(quant)
+        sell_quant = quant.copy()
         sell_quant[sell_quant > 0] = 0.
         sell_quant = np.abs(sell_quant)
-        sell_price = deepcopy(price)
+        sell_price = price.copy()
         sell_price[nan_mask] = 0.
         self.sold_value += sell_price * 100 * (1 - self.poundage_rate) * sell_quant
 
@@ -202,13 +194,13 @@ class TradeEnv(gym.Env):
         # 如果采用t+1结算 and 交易了 则跳到下一天
         self.set_next_day()
         # 先添加到历史中，reward为空
-        his_log = [trade_time, price, quant, deepcopy(self.stock_amount), self.money, None, action,
-                   deepcopy(self.last_time_stock_value), self.buy_value, self.sold_value, profit_ratio]
+        his_log = [trade_time, price, quant, self.stock_amount.copy(), self.money, None, action,
+                   self.last_time_stock_value.copy(), self.buy_value, self.sold_value, profit_ratio]
 
         reward = self.get_reward(his_log, last_time_value)
         his_log[5] = reward
         self.trade_history.append(his_log)
-        if self.mode == 'train':
+        if self.wandb:
             wandb.log({'episode': self.episode, 'reward': reward}, sync=False)
         return self.get_state(), reward, self.done, {}
 
@@ -222,7 +214,10 @@ class TradeEnv(gym.Env):
 
             price_change_rate = (now_price - last_price) / last_price
             nan_mask = np.isnan(price_change_rate)
+            # 超额收益率一阶差分*100
             reward = (((now_value - last_value) / last_value) - price_change_rate[~nan_mask].mean()) * 100
+            # 累计收益率
+            # reward = now_hist[-1].mean()
         else:
             reward = 0
         return reward
@@ -236,7 +231,7 @@ class TradeEnv(gym.Env):
             self.done = True
 
     def read_stock_data(self, stock_codes, load_from_cache=False):
-        save_path = os.path.join(self.stock_data_path, '../Data/test/EnvData.dill')
+        save_path = os.path.join(self.stock_data_path, 'EnvData.dill')
         stocks = OrderedDict()
         date_index = []
         # in order by stock_code
@@ -288,7 +283,7 @@ class TradeEnv(gym.Env):
                 for key in stocks.keys():
                     value = stocks[key][i - windows_size:i, :]
                     stock_data_in_date.append(value.tolist())
-                    post_processed_data.append(self.post_processor(value).tolist())
+                    post_processed_data.append(self.post_processor[0](value).tolist())
                 time_series[date] = np.array(stock_data_in_date)
                 post_processed_time_series[date] = np.array(post_processed_data)
             with open(save_path, 'wb') as f:
@@ -314,13 +309,14 @@ class TradeEnv(gym.Env):
         obs = {'stock_obs': stock_obs}
         if self.agent_state:
             # 当前每只股票的每股成本
-            stock_cost = np.expand_dims((self.buy_value - self.sold_value) / (100 * self.stock_amount), axis=0)
+            stock_cost = np.expand_dims((self.buy_value - self.sold_value) / (100 * np.array(self.stock_amount)),
+                                        axis=0)
             stock_cost = np.nan_to_num(stock_cost)
             # shape = (2, num_stocks)
-            stock_position = log10plus1R(
+            stock_position = self.post_processor[1](
                 np.concatenate([np.expand_dims(self.stock_amount, axis=0), stock_cost], axis=0))
             obs['stock_position'] = stock_position
-            money_obs = log10plus1R(np.array([self.money, ]))
+            money_obs = self.post_processor[2](np.array([self.money, ]))
             obs['money'] = money_obs
         return obs
 

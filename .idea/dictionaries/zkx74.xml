@@ -1,12 +1,18 @@
 <component name="ProjectDictionaryState">
   <dictionary name="zkx74">
     <words>
+      <w>argparser</w>
       <w>ffill</w>
       <w>gelu</w>
+      <w>logdir</w>
+      <w>logits</w>
       <w>moneyflow</w>
       <w>ndarray</w>
+      <w>optim</w>
       <w>quant</w>
+      <w>reinit</w>
       <w>scaler</w>
+      <w>tianshou</w>
       <w>wandb</w>
       <w>xshe</w>
       <w>xshg</w>
