@@ -62,7 +62,7 @@ if __name__ == '__main__':
     # for stock in stocks:
     #     res = get_price(stock, start_date, start_date)
     #     if res.index[0].to_pydatetime() > start_date_limit:
-    #         stock_list.remove(stock)
+    #         stock_list.remove(stock.replace('_','.'))
     # with open('./000300_XSHG_list.pkl', 'wb') as f:
     #     pk.dump(stock_list, f)
     # with open('./000300_XSHG_list.txt', 'w') as f:

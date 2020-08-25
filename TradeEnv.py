@@ -103,7 +103,7 @@ class TradeEnv(gym.Env):
 
     def reset(self):
         # 随机初始化时间
-        self.index = np.random.randint(low=0, high=len(self.time_list))
+        self.index = np.random.randint(low=0, high=len(self.time_list)-self.episode_len)
         self.current_time = self.time_list[self.index]
         self.done = False
         self.money = self.principal
@@ -299,12 +299,14 @@ class TradeEnv(gym.Env):
                 post_processed_time_series[date] = np.array(post_processed_data)
             with open(save_path, 'wb') as f:
                 dill.dump((stock_codes, time_series, post_processed_time_series, global_date_intersection), f)
+            print("数据生成/保存完毕")
         else:
             with open(save_path, 'rb') as f:
                 stock_codes_, time_series, post_processed_time_series, global_date_intersection = dill.load(f)
             assert stock_codes == stock_codes_
             assert list(time_series.values())[0].shape == (len(stock_codes), self.obs_time, self.feature_num)
             assert list(time_series.values())[0].shape == list(post_processed_time_series.values())[0].shape
+            print("数据读取完毕")
         return stock_codes, time_series, post_processed_time_series, global_date_intersection
 
     def get_state(self):
@@ -398,7 +400,7 @@ class TradeEnv(gym.Env):
                            tickfont={'color': 'white'}, ),
                 yaxis=dict(title='收益率', showgrid=False, zeroline=False, titlefont={'color': 'red'},
                            tickfont={'color': 'red'}, anchor='x'),
-                yaxis2=dict(title='持股量', side='right',
+                yaxis2=dict(title='持股量(手)', side='right',
                             titlefont={'color': '#00ccff'}, tickfont={'color': '#00ccff'},
                             showgrid=False, zeroline=False, anchor='x', overlaying='y'),
 
@@ -409,13 +411,13 @@ class TradeEnv(gym.Env):
 
                 xaxis3=dict(type="date", showgrid=False, zeroline=False, titlefont={'color': 'white'},
                             tickfont={'color': 'white'}, ),
-                yaxis4=dict(title='交易量', side='left',
+                yaxis4=dict(title='交易量(手)', side='left',
                             titlefont={'color': 'white'}, tickfont={'color': 'white'},
                             showgrid=False, zeroline=False, anchor='x3'),
 
                 xaxis4=dict(type="date", showgrid=False, zeroline=False, titlefont={'color': 'white'},
                             tickfont={'color': 'white'}, ),
-                yaxis5=dict(title='股价', side='left',
+                yaxis5=dict(title='股价(元/股)', side='left',
                             titlefont={'color': 'orange'}, tickfont={'color': 'orange'},
                             showgrid=False,
                             zeroline=False, anchor='x4'),
@@ -444,7 +446,7 @@ class TradeEnv(gym.Env):
                                     yaxis='y')
                 amount_scatter = dict(x=time_list,
                                       y=amount_list,
-                                      name=f'持股数量（手）',
+                                      name=f'持股数量',
                                       line=dict(color='rgba(0,204,255,0.4)'),
                                       mode='lines',
                                       fill='tozeroy',
@@ -453,7 +455,7 @@ class TradeEnv(gym.Env):
                                       yaxis='y2', secondary_y=True)
                 trade_bar = dict(x=time_list,
                                  y=quant_list,
-                                 name=f'交易量(手)',
+                                 name=f'交易量',
                                  marker=dict(color=['#FF1A1A' if quant > 0 else '#62C37C' for quant in quant_list]),
                                  opacity=0.5, xaxis='x3',
                                  yaxis='y4')
