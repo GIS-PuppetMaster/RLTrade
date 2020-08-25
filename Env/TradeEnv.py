@@ -71,26 +71,24 @@ class TradeEnv(gym.Env):
         # time_list只包含交易环境可用的有效日期
         self.time_list = self.raw_time_list[self.obs_time:]
         self.reward_verbose = reward_verbose
-        self.action_space = spaces.Box(low=np.array([0, ] + [0 for _ in range(len(self.stock_codes))]),
-                                       high=np.array([0, ] + [1 for _ in range(len(self.stock_codes))]))
+        self.action_space = spaces.Box(low=np.array([0 for _ in range(len(self.stock_codes))] + [0, ]),
+                                       high=np.array([1 for _ in range(len(self.stock_codes))] + [1, ]))
+        obs_low = np.empty(shape=(len(self.stock_codes), self.obs_time, self.feature_num))
+        obs_low[...] = float('-inf')
+        obs_high = np.empty(shape=(len(self.stock_codes), self.obs_time, self.feature_num))
+        obs_high[...] = float('inf')
         if agent_state:
-            self.observation_space = spaces.Box(
-                low=np.array(
-                    [float('-inf') for _ in
-                     range(
-                         len(self.stock_codes) * self.feature_num * self.obs_time + 1 + len(self.stock_data))]),
-                high=np.array(
-                    [float('inf') for _ in
-                     range(
-                         len(self.stock_codes) * self.feature_num * self.obs_time + 1 + len(self.stock_data))]))
+            position_low = np.zeros(shape=(2, len(self.stock_codes)))
+            position_high = np.zeros(shape=(2, len(self.stock_codes)))
+            position_high[...] = float('inf')
+            money_low = np.zeros(shape=(1,))
+            money_high = np.zeros(shape=(1,))
+            money_high[...] = float('inf')
+            self.observation_space = spaces.Dict({'stock_obs': spaces.Box(low=obs_low, high=obs_high),
+                                                  'stock_position': spaces.Box(low=position_low, high=position_high),
+                                                  'money': spaces.Box(low=money_low, high=money_high)})
         else:
-            self.observation_space = spaces.Box(
-                low=np.array(
-                    [float('-inf') for _ in
-                     range(len(self.stock_codes) * self.feature_num * self.obs_time)]),
-                high=np.array(
-                    [float('inf') for _ in
-                     range(len(self.stock_codes) * self.feature_num * self.obs_time)]))
+            self.observation_space = spaces.Dict({'stock_obs': spaces.Box(low=obs_low, high=obs_high)})
         self.step_ = 0
         assert trade_time == "open" or trade_time == "close"
         self.trade_time = trade_time
@@ -103,7 +101,7 @@ class TradeEnv(gym.Env):
 
     def reset(self):
         # 随机初始化时间
-        self.index = np.random.randint(low=0, high=len(self.time_list)-self.episode_len)
+        self.index = np.random.randint(low=0, high=len(self.time_list) - self.episode_len)
         self.current_time = self.time_list[self.index]
         self.done = False
         self.money = self.principal
@@ -128,7 +126,6 @@ class TradeEnv(gym.Env):
         # 记录交易时间
         trade_time = self.current_time
         # 交易标记
-        # traded = [False] * len(self.stock_codes)
         # 当前（分钟）每股收盘/开盘价作为price
         if self.trade_time == 'close':
             price = self.stock_data[self.current_time][:, -1, 1]
@@ -157,8 +154,6 @@ class TradeEnv(gym.Env):
         amount = np.array(self.stock_amount)
         # 计算股票数量时将停牌股票数量保持不变
         target_amount[nan_mask] = amount[nan_mask]
-        # if self.step_ > 1:
-        #     target_amount = amount
         # 实际交易多少手
         quant = target_amount - amount
         # assert (quant[nan_mask] == 0).all()
@@ -169,13 +164,11 @@ class TradeEnv(gym.Env):
         # 更新money
         self.money -= stock_cost_money[~nan_mask].sum()
         # assert self.money > 0
-        # # 收集剩余资金到总体账户(屏蔽停牌部分)
-        # self.money += stock_last_money[~nan_mask].sum()
         # assert not np.isnan(target_amount).any()
         self.stock_amount = target_amount
         # 保存交易前所有股票价值
         last_time_value = self.last_time_stock_value.sum()
-        # 计算当前每只未停牌股票的价值， 停牌股票价值保留上次计算结果
+        # 计算并更新当前每只未停牌股票的价值， 停牌股票价值保留上次计算结果
         self.last_time_stock_value[~nan_mask] = (self.stock_amount * price * 100)[~nan_mask]
 
         buy_quant = deepcopy(quant)
@@ -193,36 +186,37 @@ class TradeEnv(gym.Env):
         self.sold_value += sell_price * 100 * (1 - self.poundage_rate) * sell_quant
 
         # q用来计算每只股票当前一共交易了多少次
-        if self.step_==1:
-            q = np.expand_dims(quant,axis=0)
+        if self.step_ == 1:
+            q = np.expand_dims(quant, axis=0)
         else:
-            q = np.concatenate([np.array([i[2] for i in self.trade_history]).astype(np.float32), np.expand_dims(quant, axis=0)], axis=0)
+            q = np.concatenate(
+                [np.array([i[2] for i in self.trade_history]).astype(np.float32), np.expand_dims(quant, axis=0)],
+                axis=0)
         # ((历史卖出价值（扣除手续费）+当前价格下持有股票的价值)/历史买入花费（算手续费）-1) * 当前交易次数
         # 前面那一坨算的是平均每次交易的收益率，要知道当前的总收益率，只需要乘以当前一共交易了几次
-        profit_ratio = ((self.sold_value + self.last_time_stock_value) / self.buy_value - 1) * np.count_nonzero(q, axis=0)
+        profit_ratio = ((self.sold_value + self.last_time_stock_value) / self.buy_value - 1) * np.count_nonzero(q,
+                                                                                                                axis=0)
         mask = np.logical_or(np.isnan(profit_ratio), np.isinf(profit_ratio))
         profit_ratio[mask] = 0.
         # 计算下一状态和奖励
         # 如果采用t+1结算 and 交易了 则跳到下一天
         self.set_next_day()
         # 先添加到历史中，reward为空
-        self.trade_history.append(
-            [trade_time, price, quant, deepcopy(self.stock_amount), self.money, None, action,
-             deepcopy(self.last_time_stock_value), profit_ratio])
-        reward = self.get_reward(last_time_value)
-        # 修改历史记录中的reward
-        self.trade_history[-1][5] = reward
+        his_log = [trade_time, price, quant, deepcopy(self.stock_amount), self.money, None, action,
+                   deepcopy(self.last_time_stock_value), self.buy_value, self.sold_value, profit_ratio]
+
+        reward = self.get_reward(his_log, last_time_value)
+        his_log[5] = reward
+        self.trade_history.append(his_log)
         if self.mode == 'train':
             wandb.log({'episode': self.episode, 'reward': reward}, sync=False)
         return self.get_state(), reward, self.done, {}
 
-    def get_reward(self, last_time_value):
+    def get_reward(self, now_hist, last_time_value):
         if len(self.trade_history) >= 2:
-            now_hist = self.trade_history[-1]
             now_price = now_hist[1]
-
             now_value = self.last_time_stock_value.sum() + now_hist[4]
-            last_hist = self.trade_history[-2]
+            last_hist = self.trade_history[-1]
             last_price = last_hist[1]
             last_value = last_time_value + last_hist[4]
 
@@ -310,17 +304,25 @@ class TradeEnv(gym.Env):
         return stock_codes, time_series, post_processed_time_series, global_date_intersection
 
     def get_state(self):
-        stock_state = self.norm_stock_data[self.current_time]
-        stock_state = np.nan_to_num(stock_state)
-        state = stock_state.astype(np.float32)
+        stock_obs = self.norm_stock_data[self.current_time]
+        stock_obs = np.nan_to_num(stock_obs)
+        stock_obs = stock_obs.astype(np.float32)
         if self.noise_rate != 0.:
             pass
             # state = np.random.multivariate_normal([0,0,0], [[state.std(axis=0)*self.noise_rate, 0],[0, state.std(axis=1)*self.noise_rate]]) + state
         # state = np.diff(state, axis=0, n=1) / state[1:, :]
-        state = state.flatten()
+        obs = {'stock_obs': stock_obs}
         if self.agent_state:
-            state = np.append(state, log10plus1R(self.money + np.array(self.stock_amount)) / 10)
-        return state
+            # 当前每只股票的每股成本
+            stock_cost = np.expand_dims((self.buy_value - self.sold_value) / (100 * self.stock_amount), axis=0)
+            stock_cost = np.nan_to_num(stock_cost)
+            # shape = (2, num_stocks)
+            stock_position = log10plus1R(
+                np.concatenate([np.expand_dims(self.stock_amount, axis=0), stock_cost], axis=0))
+            obs['stock_position'] = stock_position
+            money_obs = log10plus1R(np.array([self.money, ]))
+            obs['money'] = money_obs
+        return obs
 
     def render(self, mode='simple'):
         # if mode == "manual" or self.step_ >= self.episode_len or self.done:
@@ -334,7 +336,7 @@ class TradeEnv(gym.Env):
             return
         raw_time_array = np.array([i[0] for i in self.trade_history])
         time_list = raw_time_array.tolist()
-        raw_profit_array = np.array([i[8] for i in self.trade_history])
+        raw_profit_array = np.array([i[10] for i in self.trade_history])
         raw_price_array = pd.DataFrame(np.array([i[1] for i in self.trade_history]).astype(np.float32))
         raw_price_array.fillna(method='ffill', inplace=True)
         raw_price_array = np.array(raw_price_array)
