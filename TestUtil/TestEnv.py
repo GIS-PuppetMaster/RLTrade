@@ -29,7 +29,7 @@ obs = env.reset()
 done = False
 i=0
 while not done:
-    action_prefix = softmax(np.random.randn(len(stock_codes))).tolist()
+    action_prefix = softmax(np.random.randn(len(stock_codes))+0.2).tolist()
     action = np.array(action_prefix + [np.random.random()])
     obs, reward, done, _ = env.step(action)
     i+=1

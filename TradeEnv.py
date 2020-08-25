@@ -7,7 +7,7 @@ import plotly.express as px
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 from gym import spaces
-from datetime import datetime
+from datetime import datetime, timedelta
 from Util.Util import *
 import numpy as np
 import wandb
@@ -220,6 +220,8 @@ class TradeEnv(gym.Env):
         reward = self.get_reward(last_time_value)
         # 修改历史记录中的reward
         self.trade_history[-1][5] = reward
+        if self.mode=='train':
+            wandb.log({'episode': self.episode, 'reward': reward}, sync=False)
         return self.get_state(), reward, self.done, {}
 
     def get_reward(self, last_time_value):
@@ -338,25 +340,7 @@ class TradeEnv(gym.Env):
             return
         raw_time_array = np.array([i[0] for i in self.trade_history])
         time_list = raw_time_array.tolist()
-        # np.ndarray, shape=(time, stock), value = profit for each stock in trade time
-        # stock_value_array = np.array([i[7] for i in self.trade_history])
-
         raw_profit_array = np.array([i[10] for i in self.trade_history])
-
-        # stock_amount = np.array([i[3] for i in self.trade_history])
-        # # 每一时刻的每只股票的持股比率,shape=(time, stock)
-        # stock_amount_ratio = stock_amount / np.repeat(np.expand_dims(stock_amount.sum(axis=1), axis=1),
-        #                                               repeats=stock_amount.shape[1], axis=1)
-        # # 每一时刻总资金，shape=(time, )
-        # money = np.array([i[4] for i in self.trade_history])
-        # # 按持股比例加权的每股等效资金
-        # money_weighted = np.repeat(np.expand_dims(money, axis=1), repeats=stock_amount_ratio.shape[1],
-        #                            axis=1) * stock_amount_ratio
-        # # 按持股比例加权的每股等效本金
-        # principal = np.array([self.principal] * len(self.stock_codes))
-        # principal_weighted = np.repeat(np.expand_dims(principal, axis=0), repeats=stock_amount_ratio.shape[0],
-        #                                axis=0) * stock_amount_ratio
-        # raw_profit_array = (stock_value_array + money_weighted - principal_weighted) / principal_weighted
         raw_price_array = pd.DataFrame(np.array([i[1] for i in self.trade_history]).astype(np.float32))
         raw_price_array.fillna(method='ffill', inplace=True)
         raw_price_array = np.array(raw_price_array)
@@ -378,36 +362,74 @@ class TradeEnv(gym.Env):
         if not os.path.exists(dis):
             os.makedirs(dis)
         if mode == 'hybrid':
-            fig = make_subplots(rows=2, cols=2, subplot_titles=('回测详情', '奖励', '交易量'),
+            fig = make_subplots(rows=2, cols=2, subplot_titles=('回测详情', '', '交易量', '股价'),
                                 specs=[[{"secondary_y": True}, {"secondary_y": False}],
-                                       [{"secondary_y": False}, {"secondary_y": True}]], horizontal_spacing=0.07,
-                                vertical_spacing=0.07)
+                                       [{"secondary_y": False}, {"secondary_y": False}]], horizontal_spacing=0.1,
+                                shared_xaxes='all')
             fig.update_layout(dict(title="回测结果" + "     初始资金：" + str(
                 self.principal), paper_bgcolor='#000000', plot_bgcolor='#000000'))
-            fig.update_layout(dict(
-                xaxis=dict(title='日期', type="date", showgrid=False, zeroline=False),
-                xaxis2=dict(title='训练次数', showgrid=False, zeroline=False, titlefont={'color': 'white'},
-                            tickfont={'color': 'white'}),
-                xaxis3=dict(title='日期', type="date", showgrid=False, zeroline=False),
-                xaxis4=dict(title='日期', type="date", showgrid=False, zeroline=False),
+            buttons = list([
+                dict(count=5,
+                     label="1w",
+                     step="day",
+                     stepmode="backward")
+            ])
+            delta_time = (datetime.strptime(time_list[-1], self.time_format) - datetime.strptime(time_list[0],
+                                                                                                 self.time_format))
+            if delta_time.days >= 30:
+                buttons += [dict(count=1,
+                                 label="1m",
+                                 step="month",
+                                 stepmode="backward"),
+                            dict(count=1,
+                                 label="MTD",
+                                 step="month",
+                                 stepmode="todate")]
+            if delta_time.days >= 365:
+                buttons += [
+                    dict(count=1,
+                         label="YTD",
+                         step="year",
+                         stepmode="todate"),
+                    dict(count=1,
+                         label="1y",
+                         step="year",
+                         stepmode="backward"),
+                ]
+            buttons.append(dict(step="all"))
+            detail_layout = dict(
+                xaxis=dict(type="date", showgrid=False, zeroline=False,
+                           rangeselector=dict(
+                               buttons=buttons
+                           ),
+                           rangeslider=dict(visible=True, thickness=0.1), titlefont={'color': 'white'},
+                           tickfont={'color': 'white'}, ),
                 yaxis=dict(title='收益率', showgrid=False, zeroline=False, titlefont={'color': 'red'},
                            tickfont={'color': 'red'}, anchor='x'),
                 yaxis2=dict(title='持股量', side='right',
                             titlefont={'color': '#00ccff'}, tickfont={'color': '#00ccff'},
                             showgrid=False, zeroline=False, anchor='x', overlaying='y'),
-                yaxis3=dict(title='reward', showgrid=False, zeroline=False, titlefont={'color': '#41AB5D'},
-                            tickfont={'color': '#41AB5D'}, anchor='x2', side='left'),
+
+                xaxis2=dict(type="date", showgrid=False, zeroline=False, titlefont={'color': 'white'},
+                            tickfont={'color': 'white'}, ),
+                yaxis3=dict(title='平均收益率', showgrid=False, zeroline=False, titlefont={'color': 'white'},
+                            tickfont={'color': 'white'}, anchor='x2', side='left'),
+
+                xaxis3=dict(type="date", showgrid=False, zeroline=False, titlefont={'color': 'white'},
+                            tickfont={'color': 'white'}, ),
                 yaxis4=dict(title='交易量', side='left',
-                            titlefont={'color': 'blue'}, tickfont={'color': 'blue'},
+                            titlefont={'color': 'white'}, tickfont={'color': 'white'},
                             showgrid=False, zeroline=False, anchor='x3'),
+
+                xaxis4=dict(type="date", showgrid=False, zeroline=False, titlefont={'color': 'white'},
+                            tickfont={'color': 'white'}, ),
                 yaxis5=dict(title='股价', side='left',
                             titlefont={'color': 'orange'}, tickfont={'color': 'orange'},
                             showgrid=False,
                             zeroline=False, anchor='x4'),
-                yaxis6=dict(title='收益率', showgrid=False, zeroline=False, titlefont={'color': 'red'},
-                            tickfont={'color': 'red'}, anchor='x4', side='right', overlaying='y5'),
                 margin=dict(r=10)
-            ))
+            )
+            fig.update_layout(detail_layout)
             for i, stock_code in enumerate(self.stock_codes):
                 profit_list = raw_profit_array[:, i].tolist()
                 price_list = raw_price_array[:, i].tolist()
@@ -428,19 +450,6 @@ class TradeEnv(gym.Env):
                                     mode='lines',
                                     xaxis='x',
                                     yaxis='y')
-                price_scatter = dict(x=time_list,
-                                     y=price_list,
-                                     name=f'股价',
-                                     line=dict(color='orange'),
-                                     mode='lines',
-                                     opacity=1, xaxis='x4',
-                                     yaxis='y5')
-                trade_bar = dict(x=time_list,
-                                 y=quant_list,
-                                 name=f'交易量(手)',
-                                 marker=dict(color=['#FF1A1A' if quant > 0 else '#62C37C' for quant in quant_list]),
-                                 opacity=0.5, xaxis='x3',
-                                 yaxis='y4')
                 amount_scatter = dict(x=time_list,
                                       y=amount_list,
                                       name=f'持股数量（手）',
@@ -450,6 +459,20 @@ class TradeEnv(gym.Env):
                                       fillcolor='rgba(0,204,255,0.2)',
                                       opacity=0.6, xaxis='x',
                                       yaxis='y2', secondary_y=True)
+                trade_bar = dict(x=time_list,
+                                 y=quant_list,
+                                 name=f'交易量(手)',
+                                 marker=dict(color=['#FF1A1A' if quant > 0 else '#62C37C' for quant in quant_list]),
+                                 opacity=0.5, xaxis='x3',
+                                 yaxis='y4')
+                price_scatter = dict(x=time_list,
+                                     y=price_list,
+                                     name=f'股价',
+                                     line=dict(color='orange'),
+                                     mode='lines',
+                                     opacity=1, xaxis='x4',
+                                     yaxis='y5')
+
                 vis = True if i == 0 else False
                 for scatter in [profit_scatter, base_scatter, amount_scatter]:
                     fig.add_scatter(**scatter, row=1, col=1, visible=vis)
@@ -460,45 +483,42 @@ class TradeEnv(gym.Env):
                                    y=profit_mean,
                                    line=dict(color='rgb(255,0,0)'),
                                    name='profit mean',
-                                   showlegend=True), row=2, col=2, visible=True, xaxis='x4', yaxis='y5',
-                            secondary_y=True)
+                                   showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
             fig.add_scatter(**dict(x=time_list + time_list[::-1],
                                    y=profit_max + profit_min,
                                    fill='toself',
                                    fillcolor='rgba(200,0,0,0.2)',
                                    line_color='rgba(255,255,255,0)',
                                    name='profit',
-                                   showlegend=False), row=2, col=2, visible=True, xaxis='x4', yaxis='y5',
-                            secondary_y=True)
+                                   showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
             fig.add_scatter(**dict(x=time_list,
                                    y=base_mean,
                                    line=dict(color='rgb(68,105,255)'),
                                    name='buy and hold mean',
-                                   showlegend=True), row=2, col=2, visible=True, xaxis='x4', yaxis='y5',
-                            secondary_y=True)
+                                   showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
             fig.add_scatter(**dict(x=time_list + time_list[::-1],
                                    y=base_max + base_min,
                                    fill='toself',
                                    fillcolor='rgba(68,105,255,0.2)',
                                    line_color='rgba(255,255,255,0)',
                                    name='buy and hold',
-                                   showlegend=False), row=2, col=2, visible=True, xaxis='x4', yaxis='y5',
-                            secondary_y=True)
-            reward_list = raw_reward_array.tolist()
-            reward_scatter = dict(x=[i for i in range(len(reward_list))],
-                                  y=reward_list,
-                                  name='reward',
-                                  line=dict(color='#41AB5D'),
-                                  mode='lines',
-                                  opacity=1, xaxis='x2',
-                                  yaxis='y3')
-            fig.add_scatter(**reward_scatter, row=1, col=2, visible=True)
+                                   showlegend=True), row=1, col=2, visible=False, xaxis='x2', yaxis='y3')
+            # reward_list = raw_reward_array.tolist()
+            # reward_scatter = dict(x=[i for i in range(len(reward_list))],
+            #                       y=reward_list,
+            #                       name='reward',
+            #                       line=dict(color='#41AB5D'),
+            #                       mode='lines',
+            #                       opacity=1, xaxis='x5',
+            #                       yaxis='y6')
+            # fig.add_scatter(**reward_scatter, row=1, col=2, visible=True)
             steps = []
             for i in range(0, len(self.stock_codes) * 5, 5):
                 step = dict(
                     method="update",
                     args=[{'visible': [False] * (len(self.stock_codes) * 5 + 5)},
-                          {'title': f"{self.stock_codes[i // 5]}回测结果, 初始资金：{self.principal}"}],
+                          {'title': f"{self.stock_codes[i // 5]}回测结果, 初始资金：{self.principal}"}
+                          ],
                     label=self.stock_codes[i // 5],
                 )
                 step['args'][0]['visible'][i] = True
@@ -510,7 +530,6 @@ class TradeEnv(gym.Env):
                 step['args'][0]['visible'][-2] = True
                 step['args'][0]['visible'][-3] = True
                 step['args'][0]['visible'][-4] = True
-                step['args'][0]['visible'][-5] = True
                 steps.append(step)
             sliders = [dict(
                 active=0,
@@ -568,5 +587,4 @@ class TradeEnv(gym.Env):
             fig.add_scatter(**reward_scatter, row=2, col=1, visible=True)
             fig.update_traces(mode='lines')
         py.offline.plot(fig, auto_open=self.auto_open_result, filename=path)
-        fig.show()
         return raw_profit_array, raw_base_array
