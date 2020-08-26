@@ -455,7 +455,7 @@
       "noise_clip": 0.5,
       "reward_normalization": false,
       "ignore_done": false,
-      "estimation_step": 1
+      "estimation_step": 5
     }
   },
   "train": {

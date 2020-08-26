@@ -248,7 +248,7 @@ class TradeEnv(gym.Env):
 
     def set_next_day(self):
         index = self.index
-        if index + self.delta_time < len(self.stock_data.keys()):
+        if index + self.delta_time < len(self.time_list):
             self.current_time = self.time_list[index + self.delta_time]
             self.index += self.delta_time
         else:
