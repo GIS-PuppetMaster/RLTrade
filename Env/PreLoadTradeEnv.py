@@ -309,8 +309,8 @@ class TradeEnv(gym.Env):
                     stock_data_in_date.append(value.tolist())
                     post_processed_data.append(self.post_processor[0](value).tolist())
                 # stock, time, feature->time, stock, feature
-                time_series[date] = np.array(stock_data_in_date).transpose((1, 0, 2))
-                post_processed_time_series[date] = np.array(post_processed_data)
+                time_series[date] = np.array(stock_data_in_date,dtype=np.float32).transpose((1, 0, 2))
+                post_processed_time_series[date] = np.array(post_processed_data,dtype=np.float32).transpose((1, 0, 2))
             with open(save_path, 'wb') as f:
                 dill.dump((stock_codes, time_series, post_processed_time_series, global_date_intersection), f)
             print("数据生成/保存完毕")
