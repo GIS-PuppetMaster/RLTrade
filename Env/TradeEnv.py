@@ -303,7 +303,7 @@ class TradeEnv(gym.Env):
             for key in stocks.keys():
                 value = stocks[key][i, :]
                 stock_data_in_date.append(value.tolist())
-            time_series[date] = np.array(stock_data_in_date, dtype=np.float32)
+            time_series[date] = np.array(stock_data_in_date)
         return stock_codes, time_series, global_date_intersection
 
     def render(self, mode='simple'):

@@ -1,3 +1,5 @@
+import sys
+sys.path.append("D:\\PycharmProjects\\Stable-BaselineTrading\\")
 import tianshou as ts
 from Env.TradeEnv import TradeEnv
 from Tianshou.Net.MultiStockTradeNet import *
