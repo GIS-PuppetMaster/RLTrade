@@ -2,7 +2,6 @@ import tianshou as ts
 from Env.TradeEnv import TradeEnv
 from Tianshou.Net.MultiStockTradeNet import *
 from torch.utils.tensorboard import SummaryWriter
-from Tianshou.StockReplayBuffer import StockReplayBuffer
 import json
 import argparse
 
@@ -40,12 +39,13 @@ if __name__ == '__main__':
         critic1_net = critic1_net.cuda()
         critic2_net = critic2_net.cuda()
 
-    policy = ts.policy.TD3Policy(actor_net, actor_optim, critic1_net, critic1_optim, critic2_net, critic2_optim,
+    policy = ts.policy.SACPolicy(actor_net, actor_optim, critic1_net, critic1_optim, critic2_net, critic2_optim,
                                  **config['policy']['policy_parameter'],
                                  action_range=(
                                  train_envs.action_space[0].low.mean(), train_envs.action_space[0].high.mean()))
+
     train_collector = ts.data.Collector(policy, train_envs,
-                                        StockReplayBuffer(**config['train']['replay_buffer'], **config['env']['train']))
+                                        ts.data.PrioritizedReplayBuffer(**config['train']['replay_buffer']))
     test_collector = ts.data.Collector(policy, test_env)
 
     writer = SummaryWriter(config['train']['log_dir'])

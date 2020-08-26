@@ -201,7 +201,32 @@ class TradeEnv(gym.Env):
         self.trade_history.append(his_log)
         if self.wandb:
             wandb.log({'episode': self.episode, 'reward': reward}, sync=False)
-        return self.get_state(), reward, self.done, {}
+        info = dict(obs_current_date=trade_time, obs_next_current_date=self.current_time,
+                    obs_pass_date=self.raw_time_list[self.raw_time_list.index(trade_time) - self.obs_time],
+                    obs_next_pass_date=self.raw_time_list[self.raw_time_list.index(self.current_time) - self.obs_time])
+        return self.get_state(trade_time), reward, self.done, info
+
+    def get_state(self, trade_time):
+        stock_obs = self.norm_stock_data[trade_time]
+        stock_obs = np.nan_to_num(stock_obs)
+        stock_obs = stock_obs.astype(np.float32)
+        if self.noise_rate != 0.:
+            pass
+            # state = np.random.multivariate_normal([0,0,0], [[state.std(axis=0)*self.noise_rate, 0],[0, state.std(axis=1)*self.noise_rate]]) + state
+        # state = np.diff(state, axis=0, n=1) / state[1:, :]
+        obs = {'stock_obs': stock_obs}
+        if self.agent_state:
+            # 当前每只股票的每股成本
+            stock_cost = np.expand_dims((self.buy_value - self.sold_value) / (100 * np.array(self.stock_amount)),
+                                        axis=0)
+            stock_cost = np.nan_to_num(stock_cost)
+            # shape = (2, num_stocks)
+            stock_position = self.post_processor[1](
+                np.concatenate([np.expand_dims(self.stock_amount, axis=0), stock_cost], axis=0))
+            obs['stock_position'] = stock_position
+            money_obs = self.post_processor[2](np.array([self.money, ]))
+            obs['money'] = money_obs
+        return obs
 
     def get_reward(self, now_hist, last_time_value):
         if len(self.trade_history) >= 2:
@@ -298,34 +323,14 @@ class TradeEnv(gym.Env):
             print("数据读取完毕")
         return stock_codes, time_series, post_processed_time_series, global_date_intersection
 
-    def get_state(self):
-        stock_obs = self.norm_stock_data[self.current_time]
-        stock_obs = np.nan_to_num(stock_obs)
-        stock_obs = stock_obs.astype(np.float32)
-        if self.noise_rate != 0.:
-            pass
-            # state = np.random.multivariate_normal([0,0,0], [[state.std(axis=0)*self.noise_rate, 0],[0, state.std(axis=1)*self.noise_rate]]) + state
-        # state = np.diff(state, axis=0, n=1) / state[1:, :]
-        obs = {'stock_obs': stock_obs}
-        if self.agent_state:
-            # 当前每只股票的每股成本
-            stock_cost = np.expand_dims((self.buy_value - self.sold_value) / (100 * np.array(self.stock_amount)),
-                                        axis=0)
-            stock_cost = np.nan_to_num(stock_cost)
-            # shape = (2, num_stocks)
-            stock_position = self.post_processor[1](
-                np.concatenate([np.expand_dims(self.stock_amount, axis=0), stock_cost], axis=0))
-            obs['stock_position'] = stock_position
-            money_obs = self.post_processor[2](np.array([self.money, ]))
-            obs['money'] = money_obs
-        return obs
 
     def render(self, mode='simple'):
         # if mode == "manual" or self.step_ >= self.episode_len or self.done:
-        if mode == 'hybird' or (self.step_ != 0 and self.step_ % 20 == 0):
-            return self.draw('hybrid')
-        else:
-            return self.draw(mode)
+        if self.done:
+            if mode == 'hybird' or (self.step_ != 0 and self.step_ % 20 == 0):
+                return self.draw('hybrid')
+            else:
+                return self.draw(mode)
 
     def draw(self, mode):
         if self.trade_history.__len__() <= 1:
