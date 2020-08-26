@@ -1,8 +1,9 @@
+import json
 import pickle as pk
 from Util.Util import *
 from Env.TradeEnv import TradeEnv
 import numpy as np
-from Tianshou.StockReplayBuffer import StockReplayBuffer
+from Tianshou.StockReplayBuffer import *
 from copy import copy, deepcopy
 
 
@@ -17,32 +18,13 @@ def softmax(x):
 with open('../Data/000300_XSHG_list.pkl', 'rb') as f:
     stock_codes = pk.load(f)
 exp_name = 'testEnv'
-eval_env_config = dict(obs_time_size=60, sim_delta_time=1,
-                       start_episode=0, episode_len=750,
-                       stock_codes=stock_codes,
-                       result_path="E:/运行结果/TRPO/" + exp_name + "/" + 'eval' + "/",
-                       stock_data_path='../Data/test/',
-                       poundage_rate=2.5e-3, post_processor=[
-        [
-            "Util.Util",
-            "post_processor"
-        ],
-        [
-            "Util.Util",
-            "log10plus1R"
-        ],
-        [
-            "Util.Util",
-            "log10plus1R"
-        ]
-    ],
-                       agent_state=True, feature_num=32, data_type='day',
-                       time_format="%Y-%m-%d", noise_rate=0., load_from_cache=True)
-env = TradeEnv(**eval_env_config)
+with open('../Config/TD3Config.json', 'r', encoding='utf-8') as f:
+    config = json.load(f)
+env = TradeEnv(**config['env']['test'])
 obs = env.reset()
 done = False
 i = 0
-buffer = StockReplayBuffer(1000000, **eval_env_config)
+buffer = StockPrioritizedReplayBuffer(**config['env']['test'], **config['train']['replay_buffer'])
 local_buffer = []
 for i in range(2):
     action_prefix = softmax(np.random.randn(len(stock_codes)) + 0.2).tolist()

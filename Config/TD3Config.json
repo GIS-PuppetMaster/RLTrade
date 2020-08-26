@@ -11,7 +11,7 @@
   },
   "env": {
     "train_env_num": 24,
-    "test_env_num": 1,
+    "test_env_num": 3,
     "train": {
       "stock_data_path": "../Data/train/",
       "start_episode": 0,
@@ -468,7 +468,7 @@
       "max_epoch": 1000,
       "step_per_epoch": 100,
       "collect_per_step": 1000,
-      "episode_per_test": 5,
+      "episode_per_test": 2,
       "batch_size": 64,
       "update_per_step": 5,
       "log_interval": 1,
