@@ -62,8 +62,8 @@ class TradeEnv(gym.Env):
         self.agent_state = agent_state
         self.load_from_cache = load_from_cache
         # raw_time_list包含了原始数据中的所有日期
-        self.stock_codes, self.stock_data, self.raw_time_list = self.read_stock_data(stock_codes,
-                                                                                     load_from_cache)
+        self.stock_codes, self.stock_data, self.norm_stock_data, self.raw_time_list = self.read_stock_data(stock_codes,
+                                                                                                           load_from_cache)
         # time_list只包含交易环境可用的有效日期
         self.time_list = self.raw_time_list[self.obs_time:]
         self.action_space = spaces.Box(low=np.array([0 for _ in range(len(self.stock_codes))] + [0, ]),
@@ -119,9 +119,9 @@ class TradeEnv(gym.Env):
         # 交易标记
         # 当前（分钟）每股收盘/开盘价作为price
         if self.trade_time == 'close':
-            price = self.stock_data[self.current_time][:, 1]
+            price = self.stock_data[self.current_time][-1:, :, 1]
         elif self.trade_time == 'open':
-            price = self.stock_data[self.current_time][:, 0]
+            price = self.stock_data[self.current_time][-1:, :, 0]
         else:
             raise Exception(f"Wrong trade_time:{self.trade_time}")
         # 停牌股票股价为nan
@@ -230,61 +230,78 @@ class TradeEnv(gym.Env):
             self.done = True
 
     def read_stock_data(self, stock_codes, load_from_cache=False):
+        save_path = os.path.join(self.stock_data_path, 'EnvData.dill')
         stocks = OrderedDict()
         date_index = []
         # in order by stock_code
         stock_codes = [stock_code.replace('.', '_') for stock_code in stock_codes]
         stock_codes = sorted(stock_codes)
-        for idx, stock_code in enumerate(stock_codes):
-            print(f'{idx + 1}/{len(stock_codes)} loaded:{stock_code}')
-            if self.data_type == 'day':
-                raw = pd.read_csv(self.stock_data_path + stock_code + '_with_indicator.csv', index_col=False)
-            else:
-                raise Exception(f"Wrong data type for:{self.data_type}")
-            raw_moneyflow = pd.read_csv(self.stock_data_path + stock_code + '_moneyflow.csv', index_col=False)[
-                ['date', 'change_pct', 'net_pct_main', 'net_pct_xl', 'net_pct_l', 'net_pct_m', 'net_pct_s']].apply(
-                lambda x: x / 100 if isinstance(x[1], np.float64) else x)
-            raw = pd.merge(raw, raw_moneyflow, left_on='Unnamed: 0', right_on='date', sort=False, copy=False).drop(
-                'date', 1).rename(columns={'Unnamed: 0': 'date'})
-            raw.fillna(method='ffill', inplace=True)
-            date_index.append(np.array(raw['date']))
-            raw.set_index('date', inplace=True)
-            stocks[stock_code] = raw
-        # 生成各支股票数据按时间的并集
-        global_date_intersection = date_index[0]
-        for i in range(1, len(date_index)):
-            global_date_intersection = np.union1d(global_date_intersection, date_index[i])
-        global_date_intersection = global_date_intersection.tolist()
-        # 根据并集补全停牌数据
-        for key in stocks.keys():
-            value = stocks[key]
-            date = value.index.tolist()
-            # 需要填充的日期
-            fill = np.setdiff1d(global_date_intersection, date)
-            for fill_date in fill:
-                value.loc[fill_date] = [np.nan] * value.shape[1]
-            if len(fill) > 0:
-                value.sort_index(inplace=True)
-            stocks[key] = np.array(value)
-        # 生成股票数据
-        time_series = OrderedDict()
-        # in order by stock_codes
-        # 当前时间在state最后
-        for i in range(len(global_date_intersection)):
-            date = global_date_intersection[i]
-            stock_data_in_date = []
+        if not load_from_cache or not os.path.exists(save_path):
+            for idx, stock_code in enumerate(stock_codes):
+                print(f'{idx + 1}/{len(stock_codes)} loaded:{stock_code}')
+                if self.data_type == 'day':
+                    raw = pd.read_csv(self.stock_data_path + stock_code + '_with_indicator.csv', index_col=False)
+                else:
+                    raise Exception(f"Wrong data type for:{self.data_type}")
+                raw_moneyflow = pd.read_csv(self.stock_data_path + stock_code + '_moneyflow.csv', index_col=False)[
+                    ['date', 'change_pct', 'net_pct_main', 'net_pct_xl', 'net_pct_l', 'net_pct_m', 'net_pct_s']].apply(
+                    lambda x: x / 100 if isinstance(x[1], np.float64) else x)
+                raw = pd.merge(raw, raw_moneyflow, left_on='Unnamed: 0', right_on='date', sort=False, copy=False).drop(
+                    'date', 1).rename(columns={'Unnamed: 0': 'date'})
+                raw.fillna(method='ffill', inplace=True)
+                date_index.append(np.array(raw['date']))
+                raw.set_index('date', inplace=True)
+                stocks[stock_code] = raw
+            # 生成各支股票数据按时间的并集
+            global_date_intersection = date_index[0]
+            for i in range(1, len(date_index)):
+                global_date_intersection = np.union1d(global_date_intersection, date_index[i])
+            global_date_intersection = global_date_intersection.tolist()
+            # 根据并集补全停牌数据
             for key in stocks.keys():
-                value = stocks[key][i, :]
-                stock_data_in_date.append(value.tolist())
-            time_series[date] = np.array(stock_data_in_date)
-        return stock_codes, time_series, global_date_intersection
+                value = stocks[key]
+                date = value.index.tolist()
+                # 需要填充的日期
+                fill = np.setdiff1d(global_date_intersection, date)
+                for fill_date in fill:
+                    value.loc[fill_date] = [np.nan] * value.shape[1]
+                if len(fill) > 0:
+                    value.sort_index(inplace=True)
+                stocks[key] = np.array(value)
+            # 生成时间序列
+            windows_size = self.obs_time
+            time_series = OrderedDict()
+            post_processed_time_series = OrderedDict()
+            # in order by stock_codes
+            # 当前时间在state最后
+            for i in range(windows_size, len(global_date_intersection)):
+                print(f'timeseries: {i + 1 - windows_size}/{len(global_date_intersection) - windows_size}')
+                date = global_date_intersection[i]
+                stock_data_in_date = []
+                post_processed_data = []
+                for key in stocks.keys():
+                    value = stocks[key][i - windows_size:i, :]
+                    stock_data_in_date.append(value.tolist())
+                    post_processed_data.append(self.post_processor[0](value).tolist())
+                # stock, time, feature->time, stock, feature
+                time_series[date] = np.array(stock_data_in_date).transpose((1, 0, 2))
+                post_processed_time_series[date] = np.array(post_processed_data)
+            with open(save_path, 'wb') as f:
+                dill.dump((stock_codes, time_series, post_processed_time_series, global_date_intersection), f)
+            print("数据生成/保存完毕")
+        else:
+            with open(save_path, 'rb') as f:
+                stock_codes_, time_series, post_processed_time_series, global_date_intersection = dill.load(f)
+            assert stock_codes == stock_codes_
+            assert list(time_series.values())[0].shape == (len(stock_codes), self.obs_time, self.feature_num)
+            assert list(time_series.values())[0].shape == list(post_processed_time_series.values())[0].shape
+            print("数据读取完毕")
+        return stock_codes, time_series, post_processed_time_series, global_date_intersection
 
     def get_state(self):
-        time_index = self.raw_time_list.index(self.current_time)
-        time_series = self.raw_time_list[time_index - self.obs_time + 1:time_index + 1]
-        stock_obs = np.nan_to_num(
-            np.concatenate([np.expand_dims(self.stock_data[date], axis=0) for date in time_series], axis=0))
-        stock_obs = self.post_processor[0](stock_obs.reshape(self.obs_time, -1)).reshape(stock_obs.shape)
+        stock_obs = self.norm_stock_data[self.current_time]
+        stock_obs = np.nan_to_num(stock_obs)
+        stock_obs = stock_obs.astype(np.float32)
         if self.noise_rate != 0.:
             pass
             # state = np.random.multivariate_normal([0,0,0], [[state.std(axis=0)*self.noise_rate, 0],[0, state.std(axis=1)*self.noise_rate]]) + state

@@ -10,12 +10,12 @@
     "save_code": false
   },
   "env": {
-    "train_env_num": 5,
+    "train_env_num": 1,
     "test_env_num": 1,
     "train": {
       "stock_data_path": "../Data/train/",
       "start_episode": 0,
-      "episode_len": 750,
+      "episode_len": 250,
       "obs_time_size": 60,
       "sim_delta_time": 1,
       "stock_codes": [
@@ -202,7 +202,7 @@
       ],
       "result_path": "E:/运行结果/TD3/train/",
       "principal": 1e7,
-      "poundage_rate": 5e-3,
+      "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
@@ -417,7 +417,7 @@
       ],
       "result_path": "E:/运行结果/TD3/test/",
       "principal": 1e7,
-      "poundage_rate": 5e-3,
+      "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
@@ -453,28 +453,30 @@
       "policy_noise": 0.2,
       "update_actor_freq": 2,
       "noise_clip": 0.5,
-      "action_range": null,
       "reward_normalization": false,
       "ignore_done": false,
       "estimation_step": 1
-    },
-    "train": {
-      "replay_buffer": {
-        "size": 1000000,
-        "alpha": 0.6,
-        "beta": 0.4
-      },
-      "train_parameter": {
-        "max_epoch": 100000,
-        "step_per_epoch": 1024,
-        "collect_per_step": 10,
-        "episode_per_test": 5,
-        "batch_size": 64,
-        "update_per_step": 1,
-        "log_interval": 1,
-        "verbose": true,
-        "test_in_train": true
-      }
     }
+  },
+  "train": {
+    "replay_buffer": {
+      "size": 10000,
+      "alpha": 0.6,
+      "beta": 0.4
+    },
+    "train_parameter": {
+      "max_epoch": 100000,
+      "step_per_epoch": 10,
+      "collect_per_step": 250,
+      "episode_per_test": 5,
+      "batch_size": 64,
+      "update_per_step": 1,
+      "log_interval": 1,
+      "verbose": true,
+      "test_in_train": true
+    },
+    "log_dir": "../TensorboardLog/",
+    "save_dir":"../TensorboardLog/",
+    "gpu": true
   }
 }
