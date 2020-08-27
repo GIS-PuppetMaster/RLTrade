@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 from Tianshou.StockReplayBuffer import *
 import json
 import argparse
-from copy import deepcopy
+import os
 
 
 def make_env(i, env_type):
@@ -64,6 +64,6 @@ if __name__ == '__main__':
 
     writer = SummaryWriter(config['train']['log_dir'])
     result = ts.trainer.offpolicy_trainer(policy, train_collector, test_collector, **config['train']['train_parameter'],
-                                          writer=writer, stop_fn=lambda x: x >= 20,
+                                          writer=writer,
                                           save_fn=lambda p: torch.save(p.state_dict(), save_dir))
     torch.save(policy.state_dict(), save_dir)

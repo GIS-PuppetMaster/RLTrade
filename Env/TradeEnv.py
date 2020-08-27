@@ -105,11 +105,12 @@ class TradeEnv(gym.Env):
 
     def reset(self):
         # 随机初始化时间
-        self.index = np.random.randint(low=0, high=len(self.time_list) - self.episode_len)
+        self.index = np.random.randint(low=1, high=len(self.time_list) - self.episode_len)
         self.current_time = self.time_list[self.index]
         self.done = False
         self.money = self.principal
         self.buy_value = np.zeros(shape=(len(self.stock_codes, )))
+        # self.buy_quant = np.zeros(shape=(len(self.stock_codes, )))
         self.sold_value = np.zeros(shape=(len(self.stock_codes, )))
         # 持有股票数目(股)
         self.stock_amount = [0] * len(self.stock_codes)
@@ -180,6 +181,7 @@ class TradeEnv(gym.Env):
         buy_price = price.copy()
         buy_price[nan_mask] = 0.
         self.buy_value += buy_price * 100 * buy_quant * (1 + self.poundage_rate)
+        # self.buy_quant += buy_quant
 
         # 卖出量
         sell_quant = quant.copy()
@@ -198,8 +200,8 @@ class TradeEnv(gym.Env):
                 axis=0)
         # ((历史卖出价值（扣除手续费）+当前价格下持有股票的价值)/历史买入花费（算手续费）-1) * 当前交易次数
         # 前面那一坨算的是平均每次交易的收益率，要知道当前的总收益率，只需要乘以当前一共交易了几次
-        profit_ratio = ((self.sold_value + self.last_time_stock_value) / self.buy_value - 1) * np.count_nonzero(q,
-                                                                                                                axis=0)
+        profit_ratio = ((self.sold_value + self.last_time_stock_value) / self.buy_value - 1) * np.count_nonzero(q, axis=0)
+        # profit_ratio = (self.sold_value  - self.buy_value) * self.buy_quant/self.buy_quant.sum()
         mask = np.logical_or(np.isnan(profit_ratio), np.isinf(profit_ratio))
         profit_ratio[mask] = 0.
         # 计算下一状态和奖励

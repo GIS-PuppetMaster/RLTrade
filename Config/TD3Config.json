@@ -10,7 +10,7 @@
     "save_code": false
   },
   "env": {
-    "train_env_num": 16,
+    "train_env_num": 8,
     "test_env_num": 2,
     "wait_num": null,
     "time_out": null,
@@ -227,7 +227,7 @@
       "feature_num": 32,
       "noise_rate": 0,
       "load_from_cache": true,
-      "wandb_log": false,
+      "wandb_log": true,
       "env_type": "train"
     },
     "test": {
@@ -480,7 +480,7 @@
       "test_in_train": true
     },
     "log_dir": "../TensorboardLog/",
-    "save_dir":"../TensorboardLog/",
+    "save_dir":"../TensorboardLog/policy.pth",
     "gpu": true
   }
 }
