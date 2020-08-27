@@ -16,7 +16,7 @@ def softmax(x):
 with open('../Data/000300_XSHG_list.pkl', 'rb') as f:
     stock_codes = pk.load(f)
 exp_name = 'testEnv'
-with open('../Config/TD3Config.json', 'r', encoding='utf-8') as f:
+with open('../Config/TestTD3Config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
 env = TradeEnv(**config['env']['test'], config=config)
 obs = env.reset()
