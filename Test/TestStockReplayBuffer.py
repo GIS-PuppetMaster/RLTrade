@@ -20,7 +20,7 @@ with open('../Data/000300_XSHG_list.pkl', 'rb') as f:
 exp_name = 'testEnv'
 with open('../Config/TD3Config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
-env = TradeEnv(**config['env']['test'])
+env = TradeEnv(**config['env']['test'], config=config)
 obs = env.reset()
 done = False
 i = 0

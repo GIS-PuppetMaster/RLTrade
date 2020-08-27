@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append("D:\\PycharmProjects\\Stable-BaselineTrading\\")
 import tianshou as ts
 from Env.TradeEnv import TradeEnv
@@ -17,15 +18,21 @@ if __name__ == '__main__':
         config = json.load(f)
 
     save_dir = config['train']['save_dir']
+    run_id = None
     if config['global_wandb']:
         import wandb
 
         wandb.init(**config['wandb'], config=config)
         save_dir = wandb.run.dir + "\\" + "policy.pth"
+        run_id = wandb.run.id
     train_envs = ts.env.SubprocVectorEnv(
-        [lambda: TradeEnv(**config['env']['train']) for _ in range(config['env']['train_env_num'])])
+        [lambda: TradeEnv(**config['env']['train'], env_id=i, run_id=run_id, config=config) for i in
+         range(config['env']['train_env_num'])],
+        wait_num=config['env']['wait_num'], timeout=config['env']['time_out'])
     test_env = ts.env.SubprocVectorEnv(
-        [lambda: TradeEnv(**config['env']['test']) for _ in range(config['env']['test_env_num'])])
+        [lambda: TradeEnv(**config['env']['test'], env_id=i, run_id=run_id, config=config) for i in
+         range(config['env']['test_env_num'])],
+        wait_num=config['env']['wait_num'], timeout=config['env']['time_out'])
 
     state_space = train_envs.observation_space[0]
     action_shape = train_envs.action_space[0].shape
@@ -47,7 +54,8 @@ if __name__ == '__main__':
                                  action_range=(
                                      train_envs.action_space[0].low.mean(), train_envs.action_space[0].high.mean()))
     train_collector = ts.data.Collector(policy, train_envs,
-                                        StockPrioritizedReplayBuffer(**config['train']['replay_buffer'], **config['env']['train']))
+                                        StockPrioritizedReplayBuffer(**config['train']['replay_buffer'],
+                                                                     **config['env']['train']))
     test_collector = ts.data.Collector(policy, test_env)
 
     writer = SummaryWriter(config['train']['log_dir'])

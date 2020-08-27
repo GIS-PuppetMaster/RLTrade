@@ -10,8 +10,10 @@
     "save_code": false
   },
   "env": {
-    "train_env_num": 24,
+    "train_env_num": 8,
     "test_env_num": 3,
+    "wait_num": null,
+    "time_out": null,
     "train": {
       "stock_data_path": "../Data/train/",
       "start_episode": 0,
@@ -225,7 +227,8 @@
       "feature_num": 32,
       "noise_rate": 0,
       "load_from_cache": true,
-      "wandb": false
+      "wandb_log": true,
+      "env_type": "train"
     },
     "test": {
       "stock_data_path": "../Data/test/",
@@ -440,11 +443,12 @@
       "feature_num": 32,
       "noise_rate": 0,
       "load_from_cache": true,
-      "wandb": false
+      "wandb_log": false,
+      "env_type": "test"
     }
   },
   "policy": {
-    "actor_lr": 1e-3,
+    "actor_lr": 1e-4,
     "critic_1_lr": 1e-3,
     "critic_2_lr": 1e-3,
     "policy_parameter": {
@@ -470,7 +474,7 @@
       "collect_per_step": 1000,
       "episode_per_test": 2,
       "batch_size": 64,
-      "update_per_step": 5,
+      "update_per_step": 1,
       "log_interval": 1,
       "verbose": true,
       "test_in_train": true

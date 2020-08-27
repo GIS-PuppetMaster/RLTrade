@@ -7,6 +7,7 @@ from datetime import datetime
 from Util.Util import *
 import numpy as np
 import wandb
+import shutil
 import dill
 from collections import OrderedDict
 
@@ -16,12 +17,14 @@ from collections import OrderedDict
 
 
 class TradeEnv(gym.Env):
-    def __init__(self, stock_data_path, start_episode=0, episode_len=720, obs_time_size=60,
+    def __init__(self, stock_data_path, config, start_episode=0, episode_len=720, obs_time_size=60,
                  sim_delta_time=1, stock_codes=None,
                  result_path="E:/运行结果/train/", principal=1e7, poundage_rate=5e-3,
                  time_format="%Y-%m-%d", auto_open_result=False,
                  post_processor=None, trade_time='open',
-                 agent_state=True, data_type='day', feature_num=32, noise_rate=0., load_from_cache=True, wandb=False):
+                 agent_state=True, data_type='day', feature_num=32, noise_rate=0., load_from_cache=True,
+                 wandb_log=False,
+                 env_id=0, env_type='test', **kwargs):
         """
                 :param start_episode: 起始episode
                 :param episode_len: episode长度
@@ -39,8 +42,9 @@ class TradeEnv(gym.Env):
                 :param agent_state: 是否添加agent状态（资金、头寸）到环境状态中
                 :param data_type: 数据类型，日级/分钟级，取值：'day'/'minute'
                 :param feature_num: 特征数目
-                :param 噪声比率， 定义为原始价格数据+标准正态分布噪声*（数据每列方差*noise_rate），也就是加上mean=0，std=noise_rate倍数据std的噪声
+                :param noise_rate:噪声比率， 定义为原始价格数据+标准正态分布噪声*（数据每列方差*noise_rate），也就是加上mean=0，std=noise_rate倍数据std的噪声
                         若为0.则不添加噪声
+                :param env_index:环境编号，用于在Vector_Env中标识环境，
                 :return:
                 """
         super(TradeEnv, self).__init__()
@@ -48,6 +52,9 @@ class TradeEnv(gym.Env):
         self.delta_time = sim_delta_time
         self.stock_data_path = stock_data_path
         self.result_path = result_path
+        if env_id == 0 and os.path.exists(self.result_path):
+            shutil.rmtree(self.result_path)
+            os.makedirs(self.result_path)
         self.principal = principal
         self.poundage_rate = poundage_rate
         self.time_format = time_format
@@ -84,7 +91,14 @@ class TradeEnv(gym.Env):
         self.step_ = 0
         assert trade_time == "open" or trade_time == "close"
         self.trade_time = trade_time
-        self.wandb = wandb
+        self.env_id = env_id
+        self.env_type = env_type
+        self.wandb_log = wandb_log
+        if wandb_log:
+            if config['global_wandb']:
+                wandb.init(project=config['wandb']['project'], resume=kwargs['run_id'], reinit=True)
+            else:
+                wandb.init(project=config['wandb']['project'])
         self.reset()
 
     def seed(self, seed=None):
@@ -158,7 +172,7 @@ class TradeEnv(gym.Env):
         # assert not np.isnan(target_amount).any()
         self.stock_amount = target_amount
         # 保存交易前所有股票价值
-        last_time_value = self.last_time_stock_value.sum()
+        last_time_value = self.last_time_stock_value.copy()
         # 计算并更新当前每只未停牌股票的价值， 停牌股票价值保留上次计算结果
         self.last_time_stock_value[~nan_mask] = (self.stock_amount * price * 100)[~nan_mask]
 
@@ -199,16 +213,21 @@ class TradeEnv(gym.Env):
         reward = self.get_reward(his_log, last_time_value)
         his_log[5] = reward
         self.trade_history.append(his_log)
-        if self.wandb:
-            wandb.log({'episode': self.episode, 'reward': reward}, sync=False)
+        if self.wandb_log:
+            wandb.log({f'{self.env_type}_{self.env_id}_episode': self.episode,
+                       f'{self.env_type}_{self.env_id}_step': self.step_,
+                       f'{self.env_type}_{self.env_id}_reward': reward}, sync=False)
         info = dict(obs_current_date=trade_time, obs_next_current_date=self.current_time,
                     obs_pass_date=self.raw_time_list[self.raw_time_list.index(trade_time) - self.obs_time],
                     obs_next_pass_date=self.raw_time_list[self.raw_time_list.index(self.current_time) - self.obs_time])
-        return self.get_state(), reward, self.done, info
+        obs = self.get_state()
+        if self.done and self.episode % 5 == 0:
+            self.render('hybrid')
+        return obs, reward, self.done, info
 
     def get_state(self):
         time_index = self.raw_time_list.index(self.current_time)
-        time_series = self.raw_time_list[time_index - self.obs_time -1:time_index-1]
+        time_series = self.raw_time_list[time_index - self.obs_time - 1:time_index - 1]
         stock_obs = np.nan_to_num(
             np.concatenate([np.expand_dims(self.stock_data[date], axis=0) for date in time_series], axis=0))
         stock_obs = self.post_processor[0](stock_obs.reshape(self.obs_time, -1)).reshape(stock_obs.shape)
@@ -232,16 +251,27 @@ class TradeEnv(gym.Env):
 
     def get_reward(self, now_hist, last_time_value):
         if len(self.trade_history) >= 2:
-            now_price = now_hist[1]
-            now_value = self.last_time_stock_value.sum() + now_hist[4]
-            last_hist = self.trade_history[-1]
-            last_price = last_hist[1]
-            last_value = last_time_value + last_hist[4]
+            # 当前价格按照交易日第二天开盘价计算
+            now_price = self.stock_data[self.current_time][:, 0]
+            now_value = last_time_value
+            now_price_mask = np.isnan(now_price)
+            # 计算第二天开盘时当前资产配置价值
+            now_value[~now_price_mask] = (self.stock_amount * now_price * 100)[~now_price_mask]
+            first_hist = self.trade_history[0]
+            first_price = first_hist[1]
+            # first_value = first_time_value + first_hist[4]
 
-            price_change_rate = (now_price - last_price) / last_price
-            nan_mask = np.isnan(price_change_rate)
-            # 超额收益率一阶差分*100
-            reward = (((now_value - last_value) / last_value) - price_change_rate[~nan_mask].mean()) * 100
+            now_price_mask = np.isnan(now_price)
+            first_price_mask = np.isnan(first_price)
+            now_weights = now_hist[3][~now_price_mask]
+            first_weights = first_hist[3][~first_price_mask]
+            now_weights = now_weights if not (now_weights == 0).all() else np.ones_like(now_weights)
+            first_weights = first_weights if not (first_weights == 0).all() else np.ones_like(first_weights)
+            now_price = np.average(now_price[~now_price_mask], weights=now_weights)
+            first_price = np.average(first_price[~first_price_mask], weights=first_weights)
+
+            # 超额收益率
+            reward = (((now_value - self.principal) / self.principal) - (now_price - first_price) / first_price) * 100
             # 累计收益率
             # reward = now_hist[-1].mean()
         else:
@@ -322,6 +352,7 @@ class TradeEnv(gym.Env):
         raw_profit_array = np.array([i[10] for i in self.trade_history])
         raw_price_array = pd.DataFrame(np.array([i[1] for i in self.trade_history]).astype(np.float32))
         raw_price_array.fillna(method='ffill', inplace=True)
+        raw_price_array.fillna(method='bfill', inplace=True)
         raw_price_array = np.array(raw_price_array)
         raw_quant_array = np.array([i[2] for i in self.trade_history]).astype(np.float32)
         raw_amount_array = np.array([i[3] for i in self.trade_history]).astype(np.float32)
@@ -330,7 +361,7 @@ class TradeEnv(gym.Env):
         base_nan_mask = np.isnan(raw_base_array)
         base_array = raw_base_array[~base_nan_mask].reshape((raw_base_array.shape[0], -1))
         dis = self.result_path
-        path = dis + ("episode_" + str(self.episode - 1) + ".html").replace(':', "_")
+        path = dis + (f"id_{self.env_id}_episode_{self.episode - 1}.html").replace(':', "_")
         profit_mean = np.mean(raw_profit_array, axis=1).tolist()
         profit_min = np.min(raw_profit_array, axis=1).tolist()[::-1]
         profit_max = np.max(raw_profit_array, axis=1).tolist()
@@ -338,7 +369,7 @@ class TradeEnv(gym.Env):
         base_mean = np.mean(base_array, axis=1).tolist()
         base_min = np.min(base_array, axis=1).tolist()[::-1]
         base_max = np.max(base_array, axis=1).tolist()
-        if not os.path.exists(dis):
+        if self.env_id == 0 and not os.path.exists(dis):
             os.makedirs(dis)
         if mode == 'hybrid':
             fig = make_subplots(rows=2, cols=2, subplot_titles=('回测详情', '', '交易量', '股价'),
