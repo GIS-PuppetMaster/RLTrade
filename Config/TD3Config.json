@@ -10,8 +10,8 @@
     "save_code": false
   },
   "env": {
-    "train_env_num": 8,
-    "test_env_num": 3,
+    "train_env_num": 16,
+    "test_env_num": 2,
     "wait_num": null,
     "time_out": null,
     "train": {
@@ -227,7 +227,7 @@
       "feature_num": 32,
       "noise_rate": 0,
       "load_from_cache": true,
-      "wandb_log": true,
+      "wandb_log": false,
       "env_type": "train"
     },
     "test": {
@@ -470,7 +470,7 @@
     },
     "train_parameter": {
       "max_epoch": 1000,
-      "step_per_epoch": 100,
+      "step_per_epoch": 1,
       "collect_per_step": 1000,
       "episode_per_test": 2,
       "batch_size": 64,

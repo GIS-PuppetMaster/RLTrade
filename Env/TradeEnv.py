@@ -99,7 +99,6 @@ class TradeEnv(gym.Env):
                 wandb.init(project=config['wandb']['project'], resume=kwargs['run_id'], reinit=True)
             else:
                 wandb.init(project=config['wandb']['project'])
-        self.reset()
 
     def seed(self, seed=None):
         np.random.seed(seed)
@@ -125,7 +124,7 @@ class TradeEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         action = np.squeeze(action)
-        if self.step_ > self.episode_len or self.index >= len(self.time_list):
+        if self.step_ >= self.episode_len or self.index >= len(self.time_list):
             self.done = True
         self.step_ += 1
         # 记录交易时间
@@ -221,7 +220,7 @@ class TradeEnv(gym.Env):
                     obs_pass_date=self.raw_time_list[self.raw_time_list.index(trade_time) - self.obs_time],
                     obs_next_pass_date=self.raw_time_list[self.raw_time_list.index(self.current_time) - self.obs_time])
         obs = self.get_state()
-        if self.done and self.episode % 5 == 0:
+        if self.done and ((self.env_type == 'train' and self.episode % 5 == 0) or self.env_type == 'test'):
             self.render('hybrid')
         return obs, reward, self.done, info
 
@@ -266,12 +265,12 @@ class TradeEnv(gym.Env):
             now_weights = now_hist[3][~now_price_mask]
             first_weights = first_hist[3][~first_price_mask]
             now_weights = now_weights if not (now_weights == 0).all() else np.ones_like(now_weights)
-            first_weights = first_weights if not (first_weights == 0).all() else np.ones_like(first_weights)
+            # first_weights = first_weights if not (first_weights == 0).all() else np.ones_like(first_weights)
             now_price = np.average(now_price[~now_price_mask], weights=now_weights)
-            first_price = np.average(first_price[~first_price_mask], weights=first_weights)
+            first_price = np.average(first_price[~first_price_mask])
 
             # 超额收益率
-            reward = (((now_value - self.principal) / self.principal) - (now_price - first_price) / first_price) * 100
+            reward = (((now_value.sum() - self.principal) / self.principal) - (now_price - first_price) / first_price) * 100
             # 累计收益率
             # reward = now_hist[-1].mean()
         else:
@@ -372,7 +371,7 @@ class TradeEnv(gym.Env):
         if self.env_id == 0 and not os.path.exists(dis):
             os.makedirs(dis)
         if mode == 'hybrid':
-            fig = make_subplots(rows=2, cols=2, subplot_titles=('回测详情', '', '交易量', '股价'),
+            fig = make_subplots(rows=2, cols=2, subplot_titles=('回测详情', '平均收益率', '交易量', '股价'),
                                 specs=[[{"secondary_y": True}, {"secondary_y": False}],
                                        [{"secondary_y": False}, {"secondary_y": False}]], horizontal_spacing=0.1,
                                 shared_xaxes='all')

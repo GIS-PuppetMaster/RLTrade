@@ -8,6 +8,12 @@ from torch.utils.tensorboard import SummaryWriter
 from Tianshou.StockReplayBuffer import *
 import json
 import argparse
+from copy import deepcopy
+
+
+def make_env(i, env_type):
+    return lambda: TradeEnv(**config['env'][env_type], env_id=i, run_id=run_id, config=config)
+
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
@@ -26,12 +32,10 @@ if __name__ == '__main__':
         save_dir = wandb.run.dir + "\\" + "policy.pth"
         run_id = wandb.run.id
     train_envs = ts.env.SubprocVectorEnv(
-        [lambda: TradeEnv(**config['env']['train'], env_id=i, run_id=run_id, config=config) for i in
-         range(config['env']['train_env_num'])],
+        [make_env(i, 'train') for i in range(config['env']['train_env_num'])],
         wait_num=config['env']['wait_num'], timeout=config['env']['time_out'])
     test_env = ts.env.SubprocVectorEnv(
-        [lambda: TradeEnv(**config['env']['test'], env_id=i, run_id=run_id, config=config) for i in
-         range(config['env']['test_env_num'])],
+        [make_env(i, 'test') for i in range(config['env']['test_env_num'])],
         wait_num=config['env']['wait_num'], timeout=config['env']['time_out'])
 
     state_space = train_envs.observation_space[0]
