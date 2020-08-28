@@ -18,14 +18,14 @@ def make_env(i, env_type):
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--config', type=str)
-    argparser.add_argument('--test', type=bool, default=False)
+    argparser.add_argument('--test', action='store_true', default=False)
     argparser.add_argument('--load_dir', type=str, default=None)
     args = argparser.parse_args()
 
     with open(args.config, 'r', encoding='utf-8') as f:
         config = json.load(f)
 
-    save_dir = args.load_dir if args.load_dir is not None else config['train']['save_dir']
+    save_dir = args.load_dir if args.load_dir is not None and args.test else config['train']['save_dir']
     run_id = None
     if config['global_wandb'] and not args.test:
         import wandb
