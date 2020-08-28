@@ -28,7 +28,7 @@ class GRUActor(nn.Module):
         )
         self.output1 = nn.Sequential(
             nn.Linear(in_features=action_shape[0], out_features=action_shape[0] - 1),
-            nn.Softmax()
+            nn.Sigmoid()
         )
         self.output2 = nn.Sequential(
             nn.Linear(in_features=action_shape[0], out_features=1),

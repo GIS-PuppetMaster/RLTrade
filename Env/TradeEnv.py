@@ -73,7 +73,7 @@ class TradeEnv(gym.Env):
                                                                                      load_from_cache)
         # time_list只包含交易环境可用的有效日期
         self.time_list = self.raw_time_list[self.obs_time:]
-        self.action_space = spaces.Box(low=np.array([-1 for _ in range(len(self.stock_codes))] + [-1, ]),
+        self.action_space = spaces.Box(low=np.array([0 for _ in range(len(self.stock_codes))] + [0, ]),
                                        high=np.array([1 for _ in range(len(self.stock_codes))] + [1, ]))
         obs_low = np.full((self.obs_time, len(self.stock_codes), self.feature_num), float('-inf'))
         obs_high = np.full((self.obs_time, len(self.stock_codes), self.feature_num), float('inf'))
@@ -126,6 +126,10 @@ class TradeEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         action = np.squeeze(action)
+        sub_action = action[:-1]
+        normed_sub_action = sub_action-sub_action.max()
+        exp_normed_sub_action = np.exp(normed_sub_action)
+        action[:-1] = exp_normed_sub_action/exp_normed_sub_action.sum()
         self.step_ += 1
         if self.step_ >= self.episode_len or self.index >= len(self.time_list):
             self.done = True
@@ -196,7 +200,9 @@ class TradeEnv(gym.Env):
         self.sold_value += sold_value
 
         # 历史卖出价值（扣除手续费）+当前价格下持有股票的价值)/历史买入花费（算手续费
-        profit_ratio = np.nan_to_num((self.last_time_stock_value + self.sold_value - self.buy_value) / self.first_buy_value,nan=0.,posinf=0.,neginf=0.)
+        profit_ratio = np.nan_to_num(
+            (self.last_time_stock_value + self.sold_value - self.buy_value) / self.first_buy_value, nan=0., posinf=0.,
+            neginf=0.)
         self.last_sold_value = sold_value
         # 计算下一状态和奖励
         # 如果采用t+1结算 and 交易了 则跳到下一天
@@ -259,15 +265,17 @@ class TradeEnv(gym.Env):
             now_price_mask = np.isnan(now_price)
             first_price_mask = np.isnan(first_price)
             now_weights = now_hist[3][~now_price_mask]
-            first_weights = first_hist[3][~first_price_mask]
-            now_weights = now_weights if not (now_weights == 0).all() else np.ones_like(now_weights)
-            # first_weights = first_weights if not (first_weights == 0).all() else np.ones_like(first_weights)
-            now_price = np.average(now_price[~now_price_mask], weights=now_weights)
+            # first_weights = first_hist[3][~first_price_mask]
+            if now_weights.sum() == 0:
+                now_price = now_price.mean()
+            else:
+                now_price = np.average(now_price[~now_price_mask], weights=now_weights)
             first_price = np.average(first_price[~first_price_mask])
 
             # 超额收益率
             reward = (((now_value.sum() - self.principal) / self.principal) - (
                     now_price - first_price) / first_price) * 100
+            assert not np.logical_or(np.isnan(reward).any(), np.isinf(reward).any())
             # 累计收益率
             # reward = now_hist[-1].mean()
         else:
@@ -515,7 +523,7 @@ class TradeEnv(gym.Env):
                                    showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
             fig.add_heatmap(
                 **dict(x=time_list, y=self.stock_codes,
-                       z=np.array([i[6] for i in self.trade_history])[:,:-1].T, colorscale='Viridis',
+                       z=np.array([i[6] for i in self.trade_history])[:, :-1].T, colorscale='Viridis',
                        name='仓位分配(手)',
                        showlegend=True, colorbar=dict(len=0.5, y=0.2), customdata=raw_amount_array.T,
                        hovertemplate="x:%{x}\ny:%{y}\n手数:%{customdata}\n金额占比:%{z}<extra></extra>"),
