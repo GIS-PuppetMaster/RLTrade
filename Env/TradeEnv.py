@@ -73,7 +73,7 @@ class TradeEnv(gym.Env):
                                                                                      load_from_cache)
         # time_list只包含交易环境可用的有效日期
         self.time_list = self.raw_time_list[self.obs_time:]
-        self.action_space = spaces.Box(low=np.array([0 for _ in range(len(self.stock_codes))] + [0, ]),
+        self.action_space = spaces.Box(low=np.array([-1 for _ in range(len(self.stock_codes))] + [-1, ]),
                                        high=np.array([1 for _ in range(len(self.stock_codes))] + [1, ]))
         obs_low = np.full((self.obs_time, len(self.stock_codes), self.feature_num), float('-inf'))
         obs_high = np.full((self.obs_time, len(self.stock_codes), self.feature_num), float('inf'))
@@ -435,7 +435,7 @@ class TradeEnv(gym.Env):
                 xaxis4=dict(type="date", showgrid=False, zeroline=False, titlefont={'color': 'white'},
                             tickfont={'color': 'white'}, ),
 
-                yaxis6=dict(title='全局持股量(手)', showgrid=False, zeroline=False, titlefont={'color': 'white'},
+                yaxis6=dict(title='仓位分配(手)', showgrid=False, zeroline=False, titlefont={'color': 'white'},
                             tickfont={'color': 'white'}, anchor='x4'),
                 margin=dict(r=10)
             )
@@ -515,10 +515,10 @@ class TradeEnv(gym.Env):
                                    showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
             fig.add_heatmap(
                 **dict(x=time_list, y=self.stock_codes,
-                       z=np.nan_to_num(np.log10(raw_amount_array.T), posinf=0., neginf=0.), colorscale='Viridis',
-                       name='整体持股情况(手)',
+                       z=np.array([i[6] for i in self.trade_history])[:,:-1].T, colorscale='Viridis',
+                       name='仓位分配(手)',
                        showlegend=True, colorbar=dict(len=0.5, y=0.2), customdata=raw_amount_array.T,
-                       hovertemplate="x: %{x}\ny: %{y}\nz: %{customdata}\n(%{z})<extra></extra>"),
+                       hovertemplate="x:%{x}\ny:%{y}\n手数:%{customdata}\n金额占比:%{z}<extra></extra>"),
                 row=2, col=2, visible=True, xaxis='x4', yaxis='y6')
             steps = []
             for i in range(0, len(self.stock_codes) * 5, 5):

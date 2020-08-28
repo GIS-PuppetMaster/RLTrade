@@ -18,28 +18,36 @@ def make_env(i, env_type):
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--config', type=str)
+    argparser.add_argument('--test', type=bool, default=False)
+    argparser.add_argument('--load_dir', type=str, default=None)
     args = argparser.parse_args()
 
     with open(args.config, 'r', encoding='utf-8') as f:
         config = json.load(f)
 
-    save_dir = config['train']['save_dir']
+    save_dir = args.load_dir if args.load_dir is not None else config['train']['save_dir']
     run_id = None
-    if config['global_wandb']:
+    if config['global_wandb'] and not args.test:
         import wandb
 
         wandb.init(**config['wandb'], config=config)
-        save_dir = wandb.run.dir + "\\" + "policy.pth"
+        if save_dir is None:
+            save_dir = wandb.run.dir + "\\" + "policy.pth"
         run_id = wandb.run.id
-    train_envs = ts.env.SubprocVectorEnv(
-        [make_env(i, 'train') for i in range(config['env']['train_env_num'])],
-        wait_num=config['env']['wait_num'], timeout=config['env']['time_out'])
-    test_env = ts.env.SubprocVectorEnv(
+    if not args.test:
+        train_envs = ts.env.SubprocVectorEnv(
+            [make_env(i, 'train') for i in range(config['env']['train_env_num'])],
+            wait_num=config['env']['wait_num'], timeout=config['env']['time_out'])
+    else:
+        config['env']['test']['result_path'] = 'E:/运行结果/TD3/test_with_trained_model/'
+        config['env']['test']['wandb_log'] = False
+        config['env']['test']['auto_open_result'] = True
+    test_envs = ts.env.SubprocVectorEnv(
         [make_env(i, 'test') for i in range(config['env']['test_env_num'])],
         wait_num=config['env']['wait_num'], timeout=config['env']['time_out'])
 
-    state_space = train_envs.observation_space[0]
-    action_shape = train_envs.action_space[0].shape
+    state_space = test_envs.observation_space[0]
+    action_shape = test_envs.action_space[0].shape
 
     actor_net = GRUActor(state_space, action_shape, config['env']['train']['agent_state'], config['train']['gpu'])
     actor_optim = torch.optim.Adam(actor_net.parameters(), lr=config['policy']['actor_lr'])
@@ -56,14 +64,21 @@ if __name__ == '__main__':
     policy = ts.policy.TD3Policy(actor_net, actor_optim, critic1_net, critic1_optim, critic2_net, critic2_optim,
                                  **config['policy']['policy_parameter'],
                                  action_range=(
-                                     train_envs.action_space[0].low.mean(), train_envs.action_space[0].high.mean()))
-    train_collector = ts.data.Collector(policy, train_envs,
-                                        StockPrioritizedReplayBuffer(**config['train']['replay_buffer'],
-                                                                     **config['env']['train']))
-    test_collector = ts.data.Collector(policy, test_env)
+                                     test_envs.action_space[0].low.mean(), test_envs.action_space[0].high.mean()))
+    if not args.test:
+        train_collector = ts.data.Collector(policy, train_envs,
+                                            StockPrioritizedReplayBuffer(**config['train']['replay_buffer'],
+                                                                         **config['env']['train']))
+    else:
+        policy.load_state_dict(torch.load(save_dir))
+    test_collector = ts.data.Collector(policy, test_envs)
 
-    writer = SummaryWriter(config['train']['log_dir'])
-    result = ts.trainer.offpolicy_trainer(policy, train_collector, test_collector, **config['train']['train_parameter'],
-                                          writer=writer,
-                                          save_fn=lambda p: torch.save(p.state_dict(), save_dir))
-    torch.save(policy.state_dict(), save_dir)
+    if not args.test:
+        writer = SummaryWriter(config['train']['log_dir'])
+        result = ts.trainer.offpolicy_trainer(policy, train_collector, test_collector,
+                                              **config['train']['train_parameter'],
+                                              writer=writer,
+                                              save_fn=lambda p: torch.save(p.state_dict(), save_dir))
+        torch.save(policy.state_dict(), save_dir)
+    else:
+        ts.trainer.test_episode(policy, test_collector, epoch=0, n_episode=5, test_fn=None)
