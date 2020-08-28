@@ -196,9 +196,7 @@ class TradeEnv(gym.Env):
         self.sold_value += sold_value
 
         # 历史卖出价值（扣除手续费）+当前价格下持有股票的价值)/历史买入花费（算手续费
-        profit_ratio = (self.last_time_stock_value + self.sold_value - self.buy_value) / self.first_buy_value
-        mask = np.logical_or(np.isnan(profit_ratio), np.isinf(profit_ratio))
-        profit_ratio[mask] = 0.
+        profit_ratio = np.nan_to_num((self.last_time_stock_value + self.sold_value - self.buy_value) / self.first_buy_value,nan=0.,posinf=0.,neginf=0.)
         self.last_sold_value = sold_value
         # 计算下一状态和奖励
         # 如果采用t+1结算 and 交易了 则跳到下一天
@@ -372,7 +370,8 @@ class TradeEnv(gym.Env):
         if mode == 'hybrid':
             fig = make_subplots(rows=2, cols=2,
                                 specs=[[{"secondary_y": True}, {"secondary_y": True}],
-                                       [{"secondary_y": False}, {"secondary_y": False}]], horizontal_spacing=0.1,vertical_spacing=0.1,
+                                       [{"secondary_y": False}, {"secondary_y": False}]], horizontal_spacing=0.1,
+                                vertical_spacing=0.1,
                                 shared_xaxes='all')
             fig.update_layout(dict(title="回测结果" + "     初始资金：" + str(
                 self.principal), paper_bgcolor='#000000', plot_bgcolor='#000000'))
@@ -516,9 +515,10 @@ class TradeEnv(gym.Env):
                                    showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
             fig.add_heatmap(
                 **dict(x=time_list, y=self.stock_codes,
-                       z=np.log10(raw_amount_array.T), colorscale='Viridis', name='整体持股情况(手)',
+                       z=np.nan_to_num(np.log10(raw_amount_array.T), posinf=0., neginf=0.), colorscale='Viridis',
+                       name='整体持股情况(手)',
                        showlegend=True, colorbar=dict(len=0.5, y=0.2), customdata=raw_amount_array.T,
-                        hovertemplate="x: %{x}\ny: %{y}\nz: %{customdata}\n(%{z})<extra></extra>"),
+                       hovertemplate="x: %{x}\ny: %{y}\nz: %{customdata}\n(%{z})<extra></extra>"),
                 row=2, col=2, visible=True, xaxis='x4', yaxis='y6')
             steps = []
             for i in range(0, len(self.stock_codes) * 5, 5):
