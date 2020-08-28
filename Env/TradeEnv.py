@@ -126,9 +126,9 @@ class TradeEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         action = np.squeeze(action)
+        self.step_ += 1
         if self.step_ >= self.episode_len or self.index >= len(self.time_list):
             self.done = True
-        self.step_ += 1
         # 记录交易时间
         trade_time = self.current_time
         # 交易标记
@@ -185,7 +185,7 @@ class TradeEnv(gym.Env):
         buy_price[nan_mask] = 0.
         buy_value = buy_price * 100 * buy_quant * (1 + self.poundage_rate)
         self.buy_value += buy_value
-        self.first_buy_value[self.first_buy_value==0]=buy_value[self.first_buy_value==0]
+        self.first_buy_value[self.first_buy_value == 0] = buy_value[self.first_buy_value == 0]
         # 卖出量
         sell_quant = quant.copy()
         sell_quant[sell_quant > 0] = 0.
@@ -196,7 +196,7 @@ class TradeEnv(gym.Env):
         self.sold_value += sold_value
 
         # 历史卖出价值（扣除手续费）+当前价格下持有股票的价值)/历史买入花费（算手续费
-        profit_ratio = (self.last_time_stock_value + self.sold_value-self.buy_value) / self.first_buy_value
+        profit_ratio = (self.last_time_stock_value + self.sold_value - self.buy_value) / self.first_buy_value
         mask = np.logical_or(np.isnan(profit_ratio), np.isinf(profit_ratio))
         profit_ratio[mask] = 0.
         self.last_sold_value = sold_value
@@ -370,9 +370,9 @@ class TradeEnv(gym.Env):
         if self.env_id == 0 and not os.path.exists(dis):
             os.makedirs(dis)
         if mode == 'hybrid':
-            fig = make_subplots(rows=2, cols=2, subplot_titles=('回测详情', '平均收益率', '交易量', '股价'),
-                                specs=[[{"secondary_y": True}, {"secondary_y": False}],
-                                       [{"secondary_y": False}, {"secondary_y": False}]], horizontal_spacing=0.1,
+            fig = make_subplots(rows=2, cols=2,
+                                specs=[[{"secondary_y": True}, {"secondary_y": True}],
+                                       [{"secondary_y": False}, {"secondary_y": False}]], horizontal_spacing=0.1,vertical_spacing=0.1,
                                 shared_xaxes='all')
             fig.update_layout(dict(title="回测结果" + "     初始资金：" + str(
                 self.principal), paper_bgcolor='#000000', plot_bgcolor='#000000'))
@@ -410,7 +410,7 @@ class TradeEnv(gym.Env):
                            rangeselector=dict(
                                buttons=buttons
                            ),
-                           rangeslider=dict(visible=True, thickness=0.1), titlefont={'color': 'white'},
+                           rangeslider=dict(visible=True, thickness=0.07), titlefont={'color': 'white'},
                            tickfont={'color': 'white'}, ),
                 yaxis=dict(title='收益率', showgrid=True, zeroline=False, titlefont={'color': 'red'},
                            tickfont={'color': 'red'}, anchor='x'),
@@ -422,19 +422,22 @@ class TradeEnv(gym.Env):
                             tickfont={'color': 'white'}, ),
                 yaxis3=dict(title='平均收益率', showgrid=True, zeroline=False, titlefont={'color': 'white'},
                             tickfont={'color': 'white'}, anchor='x2', side='left'),
+                yaxis4=dict(title='股价(元/股)', side='right',
+                            titlefont={'color': 'orange'}, tickfont={'color': 'orange'},
+                            showgrid=False,
+                            zeroline=False, anchor='x2'),
 
                 xaxis3=dict(type="date", showgrid=False, zeroline=False, titlefont={'color': 'white'},
                             tickfont={'color': 'white'}, ),
-                yaxis4=dict(title='交易量(手)', side='left',
+                yaxis5=dict(title='交易量(手)', side='left',
                             titlefont={'color': 'white'}, tickfont={'color': 'white'},
                             showgrid=True, zeroline=False, anchor='x3'),
 
                 xaxis4=dict(type="date", showgrid=False, zeroline=False, titlefont={'color': 'white'},
                             tickfont={'color': 'white'}, ),
-                yaxis5=dict(title='股价(元/股)', side='left',
-                            titlefont={'color': 'orange'}, tickfont={'color': 'orange'},
-                            showgrid=True,
-                            zeroline=False, anchor='x4'),
+
+                yaxis6=dict(title='全局持股量(手)', showgrid=False, zeroline=False, titlefont={'color': 'white'},
+                            tickfont={'color': 'white'}, anchor='x4'),
                 margin=dict(r=10)
             )
             fig.update_layout(detail_layout)
@@ -472,20 +475,20 @@ class TradeEnv(gym.Env):
                                  name=f'交易量',
                                  marker=dict(color=['#FF1A1A' if quant > 0 else '#62C37C' for quant in quant_list]),
                                  opacity=1, xaxis='x3',
-                                 yaxis='y4')
+                                 yaxis='y5')
                 price_scatter = dict(x=time_list,
                                      y=price_list,
                                      name=f'股价',
                                      line=dict(color='orange'),
                                      mode='lines',
-                                     opacity=1, xaxis='x4',
-                                     yaxis='y5')
+                                     opacity=1, xaxis='x2',
+                                     yaxis='y4', secondary_y=True)
 
                 vis = True if i == 0 else False
                 for scatter in [profit_scatter, base_scatter, amount_scatter]:
                     fig.add_scatter(**scatter, row=1, col=1, visible=vis)
                 fig.add_bar(**trade_bar, row=2, col=1, visible=vis)
-                fig.add_scatter(**price_scatter, row=2, col=2, visible=vis)
+                fig.add_scatter(**price_scatter, row=1, col=2, visible=vis)
 
             fig.add_scatter(**dict(x=time_list,
                                    y=profit_mean,
@@ -511,11 +514,17 @@ class TradeEnv(gym.Env):
                                    line_color='rgba(255,255,255,0)',
                                    name='buy and hold',
                                    showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
+            fig.add_heatmap(
+                **dict(x=time_list, y=self.stock_codes,
+                       z=np.log10(raw_amount_array.T), colorscale='Viridis', name='整体持股情况(手)',
+                       showlegend=True, colorbar=dict(len=0.5, y=0.2), customdata=raw_amount_array.T,
+                        hovertemplate="x: %{x}\ny: %{y}\nz: %{customdata}\n(%{z})<extra></extra>"),
+                row=2, col=2, visible=True, xaxis='x4', yaxis='y6')
             steps = []
             for i in range(0, len(self.stock_codes) * 5, 5):
                 step = dict(
                     method="update",
-                    args=[{'visible': [False] * (len(self.stock_codes) * 5 + 4)},
+                    args=[{'visible': [False] * (len(self.stock_codes) * 5 + 5)},
                           {'title': f"{self.stock_codes[i // 5]}回测结果, 初始资金：{self.principal}"}
                           ],
                     label=self.stock_codes[i // 5],
@@ -529,6 +538,7 @@ class TradeEnv(gym.Env):
                 step['args'][0]['visible'][-2] = True
                 step['args'][0]['visible'][-3] = True
                 step['args'][0]['visible'][-4] = True
+                step['args'][0]['visible'][-5] = True
                 steps.append(step)
             sliders = [dict(
                 active=0,
