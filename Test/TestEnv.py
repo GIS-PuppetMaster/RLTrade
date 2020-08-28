@@ -19,6 +19,7 @@ exp_name = 'testEnv'
 with open('../Config/TestTD3Config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
 env = TradeEnv(**config['env']['test'], config=config)
+env.seed(0)
 obs = env.reset()
 done = False
 i = 0
@@ -27,4 +28,3 @@ while not done:
     action = np.array(action_prefix + [np.random.random()])
     obs, reward, done, _ = env.step(action)
     i += 1
-env.render('hybrid')

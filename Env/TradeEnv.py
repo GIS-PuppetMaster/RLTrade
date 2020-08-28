@@ -109,6 +109,8 @@ class TradeEnv(gym.Env):
         self.current_time = self.time_list[self.index]
         self.done = False
         self.money = self.principal
+        self.first_buy_value = np.zeros(shape=(len(self.stock_codes, )))
+        self.last_sold_value = np.zeros(shape=(len(self.stock_codes, )))
         self.buy_value = np.zeros(shape=(len(self.stock_codes, )))
         self.sold_value = np.zeros(shape=(len(self.stock_codes, )))
         # 持有股票数目(股)
@@ -158,6 +160,8 @@ class TradeEnv(gym.Env):
         amount = np.array(self.stock_amount)
         # 计算股票数量时将停牌股票数量保持不变
         target_amount[nan_mask] = amount[nan_mask]
+        # if self.step_ > 1 and self.step_ % 100 != 0:
+        #     target_amount = amount
         # 实际交易多少手
         quant = target_amount - amount
         # assert (quant[nan_mask] == 0).all()
@@ -179,35 +183,29 @@ class TradeEnv(gym.Env):
         buy_quant[buy_quant < 0] = 0.
         buy_price = price.copy()
         buy_price[nan_mask] = 0.
-        self.buy_value += buy_price * 100 * buy_quant * (1 + self.poundage_rate)
-
+        buy_value = buy_price * 100 * buy_quant * (1 + self.poundage_rate)
+        self.buy_value += buy_value
+        self.first_buy_value[self.first_buy_value==0]=buy_value[self.first_buy_value==0]
         # 卖出量
         sell_quant = quant.copy()
         sell_quant[sell_quant > 0] = 0.
         sell_quant = np.abs(sell_quant)
         sell_price = price.copy()
         sell_price[nan_mask] = 0.
-        self.sold_value += sell_price * 100 * (1 - self.poundage_rate) * sell_quant
+        sold_value = sell_price * 100 * (1 - self.poundage_rate) * sell_quant
+        self.sold_value += sold_value
 
-        # q用来计算每只股票当前一共交易了多少次
-        # if self.step_ == 1:
-        #     q = np.expand_dims(quant, axis=0)
-        # else:
-        #     q = np.concatenate(
-        #         [np.array([i[2] for i in self.trade_history]).astype(np.float32), np.expand_dims(quant, axis=0)],
-        #         axis=0)
-        # ((历史卖出价值（扣除手续费）+当前价格下持有股票的价值)/历史买入花费（算手续费）-1) * 当前交易次数
-        # 前面那一坨算的是平均每次交易的收益率，要知道当前的总收益率，只需要乘以当前一共交易了几次
-        # profit_ratio = ((self.sold_value + self.last_time_stock_value) / self.buy_value - 1) * np.count_nonzero(q, axis=0)
-        profit_ratio = (self.sold_value + self.last_time_stock_value) / self.buy_value - 1
+        # 历史卖出价值（扣除手续费）+当前价格下持有股票的价值)/历史买入花费（算手续费
+        profit_ratio = (self.last_time_stock_value + self.sold_value-self.buy_value) / self.first_buy_value
         mask = np.logical_or(np.isnan(profit_ratio), np.isinf(profit_ratio))
         profit_ratio[mask] = 0.
+        self.last_sold_value = sold_value
         # 计算下一状态和奖励
         # 如果采用t+1结算 and 交易了 则跳到下一天
         self.set_next_day()
         # 先添加到历史中，reward为空
-        his_log = [trade_time, price, quant, self.stock_amount.copy(), self.money, None, action,
-                   self.last_time_stock_value.copy(), self.buy_value, self.sold_value, profit_ratio]
+        his_log = [trade_time, price.copy(), quant.copy(), self.stock_amount.copy(), self.money, None, action,
+                   self.last_time_stock_value.copy(), self.buy_value.copy(), self.sold_value.copy(), profit_ratio]
 
         reward = self.get_reward(his_log, last_time_value)
         his_log[5] = reward
@@ -271,7 +269,7 @@ class TradeEnv(gym.Env):
 
             # 超额收益率
             reward = (((now_value.sum() - self.principal) / self.principal) - (
-                        now_price - first_price) / first_price) * 100
+                    now_price - first_price) / first_price) * 100
             # 累计收益率
             # reward = now_hist[-1].mean()
         else:
@@ -357,7 +355,7 @@ class TradeEnv(gym.Env):
         raw_quant_array = np.array([i[2] for i in self.trade_history]).astype(np.float32)
         raw_amount_array = np.array([i[3] for i in self.trade_history]).astype(np.float32)
         raw_reward_array = np.array([i[5] for i in self.trade_history]).astype(np.float32)
-        raw_base_array = (raw_price_array - raw_price_array[0, :]) / raw_price_array[0, :]
+        raw_base_array = raw_price_array / raw_price_array[0, :] - 1
         base_nan_mask = np.isnan(raw_base_array)
         base_array = raw_base_array[~base_nan_mask].reshape((raw_base_array.shape[0], -1))
         dis = self.result_path
@@ -414,7 +412,7 @@ class TradeEnv(gym.Env):
                            ),
                            rangeslider=dict(visible=True, thickness=0.1), titlefont={'color': 'white'},
                            tickfont={'color': 'white'}, ),
-                yaxis=dict(title='收益率', showgrid=False, zeroline=False, titlefont={'color': 'red'},
+                yaxis=dict(title='收益率', showgrid=True, zeroline=False, titlefont={'color': 'red'},
                            tickfont={'color': 'red'}, anchor='x'),
                 yaxis2=dict(title='持股量(手)', side='right',
                             titlefont={'color': '#00ccff'}, tickfont={'color': '#00ccff'},
@@ -422,20 +420,20 @@ class TradeEnv(gym.Env):
 
                 xaxis2=dict(type="date", showgrid=False, zeroline=False, titlefont={'color': 'white'},
                             tickfont={'color': 'white'}, ),
-                yaxis3=dict(title='平均收益率', showgrid=False, zeroline=False, titlefont={'color': 'white'},
+                yaxis3=dict(title='平均收益率', showgrid=True, zeroline=False, titlefont={'color': 'white'},
                             tickfont={'color': 'white'}, anchor='x2', side='left'),
 
                 xaxis3=dict(type="date", showgrid=False, zeroline=False, titlefont={'color': 'white'},
                             tickfont={'color': 'white'}, ),
                 yaxis4=dict(title='交易量(手)', side='left',
                             titlefont={'color': 'white'}, tickfont={'color': 'white'},
-                            showgrid=False, zeroline=False, anchor='x3'),
+                            showgrid=True, zeroline=False, anchor='x3'),
 
                 xaxis4=dict(type="date", showgrid=False, zeroline=False, titlefont={'color': 'white'},
                             tickfont={'color': 'white'}, ),
                 yaxis5=dict(title='股价(元/股)', side='left',
                             titlefont={'color': 'orange'}, tickfont={'color': 'orange'},
-                            showgrid=False,
+                            showgrid=True,
                             zeroline=False, anchor='x4'),
                 margin=dict(r=10)
             )
@@ -473,7 +471,7 @@ class TradeEnv(gym.Env):
                                  y=quant_list,
                                  name=f'交易量',
                                  marker=dict(color=['#FF1A1A' if quant > 0 else '#62C37C' for quant in quant_list]),
-                                 opacity=0.5, xaxis='x3',
+                                 opacity=1, xaxis='x3',
                                  yaxis='y4')
                 price_scatter = dict(x=time_list,
                                      y=price_list,
