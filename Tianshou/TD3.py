@@ -49,12 +49,12 @@ if __name__ == '__main__':
     state_space = test_envs.observation_space[0]
     action_shape = test_envs.action_space[0].shape
 
-    actor_net = GRUActor(state_space, action_shape, config['env']['train']['agent_state'], config['train']['gpu'])
-    actor_optim = torch.optim.Adam(actor_net.parameters(), lr=config['policy']['actor_lr'])
-    critic1_net = GRUCritic(state_space, action_shape, config['env']['train']['agent_state'], config['train']['gpu'])
-    critic1_optim = torch.optim.Adam(critic1_net.parameters(), lr=config['policy']['critic_1_lr'])
-    critic2_net = GRUCritic(state_space, action_shape, config['env']['train']['agent_state'], config['train']['gpu'])
-    critic2_optim = torch.optim.Adam(critic2_net.parameters(), lr=config['policy']['critic_2_lr'])
+    actor_net = GRUActor(state_space, action_shape, config['env']['train']['agent_state'], config['train']['gpu'], **config['policy']['actor'])
+    actor_optim = torch.optim.Adam(actor_net.parameters(), lr=config['policy']['actor']['lr'])
+    critic1_net = GRUCritic(state_space, action_shape, config['env']['train']['agent_state'], config['train']['gpu'], **config['policy']['critic_1'])
+    critic1_optim = torch.optim.Adam(critic1_net.parameters(), lr=config['policy']['critic_1']['lr'])
+    critic2_net = GRUCritic(state_space, action_shape, config['env']['train']['agent_state'], config['train']['gpu'], **config['policy']['critic_2'])
+    critic2_optim = torch.optim.Adam(critic2_net.parameters(), lr=config['policy']['critic_2']['lr'])
 
     if config['train']['gpu']:
         actor_net = actor_net.cuda()
@@ -81,4 +81,4 @@ if __name__ == '__main__':
                                               save_fn=lambda p: torch.save(p.state_dict(), save_dir))
         torch.save(policy.state_dict(), save_dir)
     else:
-        ts.trainer.test_episode(policy, test_collector, epoch=0, n_episode=5, test_fn=None)
+        ts.trainer.test_episode(policy, test_collector, epoch=0, n_episode=1, test_fn=None)

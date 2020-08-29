@@ -365,7 +365,7 @@ class TradeEnv(gym.Env):
         base_nan_mask = np.isnan(raw_base_array)
         base_array = raw_base_array[~base_nan_mask].reshape((raw_base_array.shape[0], -1))
         dis = self.result_path
-        path = dis + (f"id_{self.env_id}_episode_{self.episode - 1}.html").replace(':', "_")
+        path = dis + (f"episode_{self.episode - 1}_id_{self.env_id}.html").replace(':', "_")
         profit_mean = np.mean(raw_profit_array, axis=1).tolist()
         profit_min = np.min(raw_profit_array, axis=1).tolist()[::-1]
         profit_max = np.max(raw_profit_array, axis=1).tolist()
@@ -464,7 +464,7 @@ class TradeEnv(gym.Env):
                 base_scatter = dict(x=time_list,
                                     y=base_list,
                                     name=f'Buy and hold',
-                                    line=dict(color='blue'),
+                                    line=dict(color='rgb(68,105,255)'),
                                     mode='lines',
                                     xaxis='x',
                                     yaxis='y')
@@ -507,7 +507,7 @@ class TradeEnv(gym.Env):
                                    fill='toself',
                                    fillcolor='rgba(200,0,0,0.2)',
                                    line_color='rgba(255,255,255,0)',
-                                   name='profit',
+                                   name='profit min-max',
                                    showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
             fig.add_scatter(**dict(x=time_list,
                                    y=base_mean,
@@ -519,12 +519,12 @@ class TradeEnv(gym.Env):
                                    fill='toself',
                                    fillcolor='rgba(68,105,255,0.2)',
                                    line_color='rgba(255,255,255,0)',
-                                   name='buy and hold',
+                                   name='buy and hold min-max',
                                    showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
             fig.add_heatmap(
                 **dict(x=time_list, y=self.stock_codes,
                        z=np.array([i[6] for i in self.trade_history])[:, :-1].T, colorscale='Viridis',
-                       name='仓位分配(手)',
+                       name='仓位分配',
                        showlegend=True, colorbar=dict(len=0.5, y=0.2), customdata=raw_amount_array.T,
                        hovertemplate="x:%{x}\ny:%{y}\n手数:%{customdata}\n金额占比:%{z}<extra></extra>"),
                 row=2, col=2, visible=True, xaxis='x4', yaxis='y6')
@@ -543,9 +543,9 @@ class TradeEnv(gym.Env):
                 step['args'][0]['visible'][i + 3] = True
                 step['args'][0]['visible'][i + 4] = True
                 step['args'][0]['visible'][-1] = True
-                step['args'][0]['visible'][-2] = True
+                step['args'][0]['visible'][-2] = False
                 step['args'][0]['visible'][-3] = True
-                step['args'][0]['visible'][-4] = True
+                step['args'][0]['visible'][-4] = False
                 step['args'][0]['visible'][-5] = True
                 steps.append(step)
             sliders = [dict(

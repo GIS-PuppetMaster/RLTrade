@@ -1,27 +1,37 @@
 import torch
 import numpy as np
 from torch import nn
-import gym
+import importlib
+
+from Tianshou.Net.NBeats import NBeatsNet
 
 
 class GRUActor(nn.Module):
-    def __init__(self, state_space, action_shape, agent_state, gpu):
+    def __init__(self, state_space, action_shape, agent_state, gpu, forecast_length, stack_types, nb_blocks_pre_stack,
+                 thetas_dims, shard_weights_in_stack, hidden_layer_units, **kwargs):
         super().__init__()
         assert len(action_shape) == 1
         self.agent_state = agent_state
         self.gpu = gpu
-        rnn_input_size = np.prod(state_space['stock_obs'].shape[-2:])
-        self.rnn = nn.GRU(input_size=rnn_input_size, hidden_size=rnn_input_size // 4,
-                          num_layers=2, batch_first=True)
+        if self.gpu:
+            self.device = torch.device('cuda:0')
+        stock_obs_shape = state_space['stock_obs'].shape
+        self.forecast = NBeatsNet(backcast_length=stock_obs_shape[0], forecast_length=forecast_length,
+                                  stack_types=stack_types,
+                                  nb_blocks_per_stack=nb_blocks_pre_stack,
+                                  thetas_dims=thetas_dims, share_weights_in_stack=shard_weights_in_stack,
+                                  hidden_layer_units=hidden_layer_units, device=self.device)
+        stock_obs_shape = list(stock_obs_shape)
+        f = lambda i: stock_obs_shape[i] if i != 0 else forecast_length
+        forecast_output_shape = np.prod([f(i) for i in range(len(stock_obs_shape))])
         if agent_state:
             stock_pos_input_size = np.prod(state_space['stock_position'].shape)
-
             self.stock_pos_fc = nn.Sequential(
                 nn.Linear(in_features=stock_pos_input_size, out_features=stock_pos_input_size // 2),
                 nn.ReLU())
-            body_input_size = rnn_input_size // 4 + stock_pos_input_size // 2 + np.prod(state_space['money'].shape)
+            body_input_size = forecast_output_shape + stock_pos_input_size // 2 + np.prod(state_space['money'].shape)
         else:
-            body_input_size = rnn_input_size // 4
+            body_input_size = forecast_output_shape
         self.body = nn.Sequential(
             nn.Linear(in_features=body_input_size, out_features=action_shape[0]),
             nn.Tanh(),
@@ -51,9 +61,8 @@ class GRUActor(nn.Module):
                 stock_position = stock_position.cuda()
                 money = money.cuda()
         batch, time, stocks, feature = stock_obs.shape
-        stock_obs = stock_obs.view(batch, time, -1)
         # batch, feature
-        stock_obs = self.rnn(stock_obs)[0][:, -1, :]
+        stock_obs = self.forecast(stock_obs)[1].view(batch, -1)
         if self.agent_state:
             stock_position = stock_position.view(stock_position.shape[0], -1)
             stock_position = self.stock_pos_fc(stock_position)
@@ -66,24 +75,34 @@ class GRUActor(nn.Module):
         logits = torch.cat((stock_ratio, logits), dim=1)
         return torch.Tensor.cpu(logits), state
 
+
 class GRUCritic(nn.Module):
-    def __init__(self, state_space, action_shape, agent_state, gpu):
+    def __init__(self, state_space, action_shape, agent_state, gpu, forecast_length, stack_types, nb_blocks_pre_stack,
+                 thetas_dims, shard_weights_in_stack, hidden_layer_units, **kwargs):
         super().__init__()
         assert len(action_shape) == 1
         self.agent_state = agent_state
         self.gpu = gpu
-        rnn_input_size = np.prod(state_space['stock_obs'].shape[-2:])
-        self.rnn = nn.GRU(input_size=rnn_input_size, hidden_size=rnn_input_size // 4,
-                          num_layers=2, batch_first=True)
+        if self.gpu:
+            self.device = torch.device('cuda:0')
+        stock_obs_shape = state_space['stock_obs'].shape
+        self.forecast = NBeatsNet(backcast_length=stock_obs_shape[0], forecast_length=forecast_length,
+                                  stack_types=stack_types,
+                                  nb_blocks_per_stack=nb_blocks_pre_stack,
+                                  thetas_dims=thetas_dims, share_weights_in_stack=shard_weights_in_stack,
+                                  hidden_layer_units=hidden_layer_units, device=self.device)
+        stock_obs_shape = list(stock_obs_shape)
+        f = lambda i: stock_obs_shape[i] if i != 0 else forecast_length
+        forecast_output_shape = np.prod([f(i) for i in range(len(stock_obs_shape))])
         if agent_state:
             stock_pos_input_size = np.prod(state_space['stock_position'].shape)
 
             self.stock_pos_fc = nn.Sequential(
                 nn.Linear(in_features=stock_pos_input_size, out_features=stock_pos_input_size // 2),
                 nn.ReLU())
-            body_input_size = rnn_input_size // 4 + stock_pos_input_size // 2 + np.prod(state_space['money'].shape)
+            body_input_size = forecast_output_shape + stock_pos_input_size // 2 + np.prod(state_space['money'].shape)
         else:
-            body_input_size = rnn_input_size // 4
+            body_input_size = forecast_output_shape
         body_input_size += action_shape[0]
         self.output = nn.Sequential(
             nn.Linear(in_features=body_input_size, out_features=256),
@@ -112,9 +131,8 @@ class GRUCritic(nn.Module):
                 stock_position = stock_position.cuda()
                 money = money.cuda()
         batch, time, stocks, feature = stock_obs.shape
-        stock_obs = stock_obs.view(batch, time, -1)
         # batch, feature
-        stock_obs = self.rnn(stock_obs)[0][:, -1, :]
+        stock_obs = self.forecast(stock_obs)[1].view(batch, -1)
         if self.agent_state:
             stock_position = stock_position.view(stock_position.shape[0], -1)
             stock_position = self.stock_pos_fc(stock_position)
@@ -124,4 +142,3 @@ class GRUCritic(nn.Module):
         hidden = torch.cat((hidden, action), dim=1)
         logits = self.output(hidden)
         return torch.Tensor.cpu(logits)
-
