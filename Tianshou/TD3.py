@@ -70,8 +70,8 @@ if __name__ == '__main__':
                                             StockPrioritizedReplayBuffer(**config['train']['replay_buffer'],
                                                                          **config['env']['train']))
     else:
-        # policy.load_state_dict(torch.load(save_dir))
-        pass
+        policy.load_state_dict(torch.load(save_dir))
+
     test_collector = ts.data.Collector(policy, test_envs)
 
     if not args.test:

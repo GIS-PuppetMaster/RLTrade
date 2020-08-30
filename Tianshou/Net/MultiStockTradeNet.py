@@ -38,7 +38,7 @@ class GRUActor(nn.Module):
         )
         self.output1 = nn.Sequential(
             nn.Linear(in_features=action_shape[0], out_features=action_shape[0] - 1),
-            nn.Sigmoid()
+            nn.ReLU()
         )
         self.output2 = nn.Sequential(
             nn.Linear(in_features=action_shape[0], out_features=1),
@@ -73,7 +73,7 @@ class GRUActor(nn.Module):
         logits = self.output2(hidden)
         stock_ratio = self.output1(hidden)
         logits = torch.cat((stock_ratio, logits), dim=1)
-        return torch.Tensor.cpu(logits), state
+        return logits, state
 
 
 class GRUCritic(nn.Module):
@@ -141,4 +141,4 @@ class GRUCritic(nn.Module):
             hidden = stocks
         hidden = torch.cat((hidden, action), dim=1)
         logits = self.output(hidden)
-        return torch.Tensor.cpu(logits)
+        return logits

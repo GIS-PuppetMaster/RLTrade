@@ -75,7 +75,7 @@ class TradeEnv(gym.Env):
         # time_list只包含交易环境可用的有效日期
         self.time_list = self.raw_time_list[self.obs_time:]
         self.action_space = spaces.Box(low=np.array([0 for _ in range(len(self.stock_codes))] + [0, ]),
-                                       high=np.array([1 for _ in range(len(self.stock_codes))] + [1, ]))
+                                       high=np.array([20 for _ in range(len(self.stock_codes))] + [20, ]))
         obs_low = np.full((self.obs_time, len(self.stock_codes), self.feature_num), float('-inf'))
         obs_high = np.full((self.obs_time, len(self.stock_codes), self.feature_num), float('inf'))
         if agent_state:
@@ -126,12 +126,13 @@ class TradeEnv(gym.Env):
         return self.get_state()
 
     def step(self, action: np.ndarray):
-        action = np.squeeze(action)
+        action = np.squeeze(action)-10
+        action[-1]=np.clip(action[-1],a_min=0, a_max=1)
         # 最大的前20只股票权重保留，其余置0
-        partition = np.argpartition(action[:-1], self.select_num)
-        hold_mask = partition[:- self.select_num]
+        partition = np.argsort(action[:-1])
+        empty_mask = partition[:- self.select_num]
         trade_mask = partition[-self.select_num:]
-        action[hold_mask] = 0.
+        action[empty_mask] = 0.
         sub_action = action[trade_mask]
         normed_sub_action = sub_action - sub_action.max()
         exp_normed_sub_action = np.exp(normed_sub_action)
@@ -349,7 +350,7 @@ class TradeEnv(gym.Env):
             time_series[date] = np.array(stock_data_in_date)
         return stock_codes, time_series, global_date_intersection
 
-    def render(self, mode='simple'):
+    def render(self, mode='hybrid'):
         # if mode == "manual" or self.step_ >= self.episode_len or self.done:
         if self.done:
             if mode == 'hybird' or (self.step_ != 0 and self.step_ % 20 == 0):
@@ -374,14 +375,15 @@ class TradeEnv(gym.Env):
         base_nan_mask = np.isnan(raw_base_array)
         base_array = raw_base_array[~base_nan_mask].reshape((raw_base_array.shape[0], -1))
         dis = self.result_path
-        path = dis + (f"episode_{self.episode - 1}_id_{self.env_id}.html").replace(':', "_")
-        profit_mean = np.mean(raw_profit_array, axis=1).tolist()
-        profit_min = np.min(raw_profit_array, axis=1).tolist()[::-1]
-        profit_max = np.max(raw_profit_array, axis=1).tolist()
+        path = dis + (f"episode_{self.episode}_id_{self.env_id}.html").replace(':', "_")
+        profit_mean = (np.array([i[7] for i in self.trade_history]).sum(axis=1) + np.array(
+            [i[4] for i in self.trade_history])) / self.principal - 1
+        # profit_min = np.min(raw_profit_array, axis=1).tolist()[::-1]
+        # profit_max = np.max(raw_profit_array, axis=1).tolist()
 
         base_mean = np.mean(base_array, axis=1).tolist()
-        base_min = np.min(base_array, axis=1).tolist()[::-1]
-        base_max = np.max(base_array, axis=1).tolist()
+        # base_min = np.min(base_array, axis=1).tolist()[::-1]
+        # base_max = np.max(base_array, axis=1).tolist()
         if self.env_id == 0 and not os.path.exists(dis):
             os.makedirs(dis)
         if mode == 'hybrid':
@@ -511,25 +513,25 @@ class TradeEnv(gym.Env):
                                    line=dict(color='rgb(255,0,0)'),
                                    name='profit mean',
                                    showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
-            fig.add_scatter(**dict(x=time_list + time_list[::-1],
-                                   y=profit_max + profit_min,
-                                   fill='toself',
-                                   fillcolor='rgba(200,0,0,0.2)',
-                                   line_color='rgba(255,255,255,0)',
-                                   name='profit min-max',
-                                   showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
+            # fig.add_scatter(**dict(x=time_list + time_list[::-1],
+            #                        y=profit_max + profit_min,
+            #                        fill='toself',
+            #                        fillcolor='rgba(200,0,0,0.2)',
+            #                        line_color='rgba(255,255,255,0)',
+            #                        name='profit min-max',
+            #                        showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
             fig.add_scatter(**dict(x=time_list,
                                    y=base_mean,
                                    line=dict(color='rgb(68,105,255)'),
                                    name='buy and hold mean',
                                    showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
-            fig.add_scatter(**dict(x=time_list + time_list[::-1],
-                                   y=base_max + base_min,
-                                   fill='toself',
-                                   fillcolor='rgba(68,105,255,0.2)',
-                                   line_color='rgba(255,255,255,0)',
-                                   name='buy and hold min-max',
-                                   showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
+            # fig.add_scatter(**dict(x=time_list + time_list[::-1],
+            #                        y=base_max + base_min,
+            #                        fill='toself',
+            #                        fillcolor='rgba(68,105,255,0.2)',
+            #                        line_color='rgba(255,255,255,0)',
+            #                        name='buy and hold min-max',
+            #                        showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
             fig.add_heatmap(
                 **dict(x=time_list, y=self.stock_codes,
                        z=np.array([i[6] for i in self.trade_history])[:, :-1].T, colorscale='Viridis',
@@ -552,10 +554,8 @@ class TradeEnv(gym.Env):
                 step['args'][0]['visible'][i + 3] = True
                 step['args'][0]['visible'][i + 4] = True
                 step['args'][0]['visible'][-1] = True
-                step['args'][0]['visible'][-2] = False
+                step['args'][0]['visible'][-2] = True
                 step['args'][0]['visible'][-3] = True
-                step['args'][0]['visible'][-4] = False
-                step['args'][0]['visible'][-5] = True
                 steps.append(step)
             sliders = [dict(
                 active=0,
@@ -583,25 +583,25 @@ class TradeEnv(gym.Env):
                                    line=dict(color='rgb(255,0,0)'),
                                    name='profit_mean',
                                    showlegend=True), row=1, col=1, visible=True)
-            fig.add_scatter(**dict(x=time_list + time_list[::-1],
-                                   y=profit_max + profit_min,
-                                   fill='toself',
-                                   fillcolor='rgba(255,0,0,0.2)',
-                                   line_color='rgba(255,255,255,0)',
-                                   name='profit',
-                                   showlegend=True), row=1, col=1, visible=True)
+            # fig.add_scatter(**dict(x=time_list + time_list[::-1],
+            #                        y=profit_max + profit_min,
+            #                        fill='toself',
+            #                        fillcolor='rgba(255,0,0,0.2)',
+            #                        line_color='rgba(255,255,255,0)',
+            #                        name='profit',
+            #                        showlegend=True), row=1, col=1, visible=True)
             fig.add_scatter(**dict(x=time_list,
                                    y=base_mean,
                                    line=dict(color='rgb(68,105,255)'),
                                    name='buy and hold mean',
                                    showlegend=True), row=1, col=1, visible=True)
-            fig.add_scatter(**dict(x=time_list + time_list[::-1],
-                                   y=base_max + base_min,
-                                   fill='toself',
-                                   fillcolor='rgba(68,105,255,0.2)',
-                                   line_color='rgba(255,255,255,0)',
-                                   name='buy and hold',
-                                   showlegend=True), row=1, col=1, visible=True)
+            # fig.add_scatter(**dict(x=time_list + time_list[::-1],
+            #                        y=base_max + base_min,
+            #                        fill='toself',
+            #                        fillcolor='rgba(68,105,255,0.2)',
+            #                        line_color='rgba(255,255,255,0)',
+            #                        name='buy and hold',
+            #                        showlegend=True), row=1, col=1, visible=True)
             reward_list = raw_reward_array.tolist()
             reward_scatter = dict(x=[i for i in range(len(reward_list))],
                                   y=reward_list,
