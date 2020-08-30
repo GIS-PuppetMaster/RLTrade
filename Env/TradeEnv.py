@@ -24,7 +24,7 @@ class TradeEnv(gym.Env):
                  post_processor=None, trade_time='open',
                  agent_state=True, data_type='day', feature_num=32, noise_rate=0., load_from_cache=True,
                  wandb_log=False,
-                 env_id=0, env_type='test', select_num=20, **kwargs):
+                 env_id=0, env_type='test', select_num=20, test_mode=False, **kwargs):
         """
                 :param start_episode: 起始episode
                 :param episode_len: episode长度
@@ -69,6 +69,7 @@ class TradeEnv(gym.Env):
         self.post_processor = [get_submodule(submodule) for submodule in post_processor]
         self.agent_state = agent_state
         self.load_from_cache = load_from_cache
+        self.test_mode = test_mode
         # raw_time_list包含了原始数据中的所有日期
         self.stock_codes, self.stock_data, self.raw_time_list = self.read_stock_data(stock_codes,
                                                                                      load_from_cache)
@@ -135,10 +136,10 @@ class TradeEnv(gym.Env):
             raise Exception(f"Wrong trade_time:{self.trade_time}")
         # 停牌股票股价为nan
         nan_mask = np.isnan(price)
-        action = np.squeeze(action).astype(np.float64)-10
+        action = np.squeeze(action).astype(np.float64) - 10
         action_masked = action[:-1].copy()
-        action_masked[nan_mask]=0.
-        action[-1]=np.clip(action[-1],a_min=0, a_max=1)
+        action_masked[nan_mask] = 0.
+        action[-1] = np.clip(action[-1], a_min=0, a_max=1)
         # 最大的前20只股票权重保留，其余置0
         partition = np.argsort(action_masked)
         empty_mask = partition[:- self.select_num]
@@ -223,8 +224,8 @@ class TradeEnv(gym.Env):
                     obs_pass_date=self.raw_time_list[self.raw_time_list.index(trade_time) - self.obs_time],
                     obs_next_pass_date=self.raw_time_list[self.raw_time_list.index(self.current_time) - self.obs_time])
         obs = self.get_state()
-        if self.done and ((
-                                  self.env_type == 'train' and self.episode % 5 == 0) or self.env_type == 'test') and self.episode % 20 == 0:
+        if self.done and ((self.env_type == 'train' and self.episode % 5 == 0) or self.env_type == 'test') and (
+                self.episode % 20 == 0 or self.test_mode):
             self.render('hybrid')
         return obs, reward, self.done, info
 
@@ -256,7 +257,7 @@ class TradeEnv(gym.Env):
         if len(self.trade_history) >= 2:
             # 当前价格按照交易日第二天开盘价计算
             now_price = self.stock_data[self.current_time][:, 0]
-            now_value = last_time_value
+            now_value = last_time_value.copy()
             now_price_mask = np.isnan(now_price)
             # 计算第二天开盘时当前资产配置价值
             now_value[~now_price_mask] = (self.stock_amount * now_price * 100)[~now_price_mask]

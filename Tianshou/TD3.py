@@ -12,7 +12,7 @@ import os
 
 
 def make_env(i, env_type):
-    return lambda: TradeEnv(**config['env'][env_type], env_id=i, run_id=run_id, config=config)
+    return lambda: TradeEnv(**config['env'][env_type], env_id=i, run_id=run_id, config=config, testmode=args.test)
 
 
 if __name__ == '__main__':
