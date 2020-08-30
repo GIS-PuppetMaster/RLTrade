@@ -128,11 +128,14 @@ class TradeEnv(gym.Env):
     def step(self, action: np.ndarray):
         action = np.squeeze(action)
         # 最大的前20只股票权重保留，其余置0
-        action[np.argpartition(action[:-1], self.select_num)[:action.shape[0] - 1 - self.select_num]] = 0.
-        sub_action = action[:-1]
+        partition = np.argpartition(action[:-1], self.select_num)
+        hold_mask = partition[:- self.select_num]
+        trade_mask = partition[-self.select_num:]
+        action[hold_mask] = 0.
+        sub_action = action[trade_mask]
         normed_sub_action = sub_action - sub_action.max()
         exp_normed_sub_action = np.exp(normed_sub_action)
-        action[:-1] = exp_normed_sub_action / exp_normed_sub_action.sum()
+        action[trade_mask] = exp_normed_sub_action / exp_normed_sub_action.sum()
         self.step_ += 1
         if self.step_ >= self.episode_len or self.index >= len(self.time_list):
             self.done = True
