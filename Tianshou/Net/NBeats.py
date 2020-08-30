@@ -112,16 +112,18 @@ class Block(nn.Module):
         self.share_thetas = share_thetas
         self.body = nn.Sequential(
             nn.Conv2d(backcast_length, units, 1),
-            nn.ReLU(),
+            nn.PReLU(),
             nn.Conv2d(units, units, 1),
-            nn.ReLU(),
+            nn.PReLU(),
             nn.Conv2d(units, units, 1),
-            nn.ReLU(),
+            nn.PReLU(),
             nn.Conv2d(units, units, 1),
-            nn.ReLU(),
+            nn.PReLU(),
         )
         self.device = device
         self.backcast_linspace, self.forecast_linspace = linspace(backcast_length, forecast_length)
+        self.backcast_linspace /= self.backcast_length
+        self.forecast_linspace /= self.forecast_length
         if share_thetas:
             self.theta_f_fc = self.theta_b_fc = nn.Conv2d(units, thetas_dim, 1, bias=False)
         else:
@@ -180,8 +182,8 @@ class GenericBlock(Block):
         # no constraint for generic arch.
         x = super(GenericBlock, self).forward(x)
 
-        theta_b = F.relu(self.theta_b_fc(x))
-        theta_f = F.relu(self.theta_f_fc(x))
+        theta_b = F.leaky_relu(self.theta_b_fc(x))
+        theta_f = F.leaky_relu(self.theta_f_fc(x))
 
         backcast = self.backcast_fc(theta_b)  # generic. 3.3.
         forecast = self.forecast_fc(theta_f)  # generic. 3.3.

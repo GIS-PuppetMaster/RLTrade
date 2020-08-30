@@ -20,6 +20,7 @@
       "episode_len": 250,
       "obs_time_size": 60,
       "sim_delta_time": 1,
+      "select_num": 20 ,
       "stock_codes": [
         "000001.XSHE",
         "000002.XSHE",
@@ -236,6 +237,7 @@
       "episode_len": 250,
       "obs_time_size": 60,
       "sim_delta_time": 1,
+      "select_num": 20 ,
       "stock_codes": [
         "000001.XSHE",
         "000002.XSHE",
@@ -462,7 +464,7 @@
         4,
         4
       ],
-      "shard_weights_in_stack": true,
+      "shard_weights_in_stack": false,
       "hidden_layer_units": 64
     },
     "critic_1": {
@@ -479,7 +481,7 @@
         4,
         4
       ],
-      "shard_weights_in_stack": true,
+      "shard_weights_in_stack": false,
       "hidden_layer_units": 64
     },
     "critic_2": {
@@ -496,7 +498,7 @@
         4,
         4
       ],
-      "shard_weights_in_stack": true,
+      "shard_weights_in_stack": false,
       "hidden_layer_units": 64
     },
     "policy_parameter": {

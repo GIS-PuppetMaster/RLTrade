@@ -24,7 +24,7 @@ class TradeEnv(gym.Env):
                  post_processor=None, trade_time='open',
                  agent_state=True, data_type='day', feature_num=32, noise_rate=0., load_from_cache=True,
                  wandb_log=False,
-                 env_id=0, env_type='test', **kwargs):
+                 env_id=0, env_type='test', select_num=20, **kwargs):
         """
                 :param start_episode: 起始episode
                 :param episode_len: episode长度
@@ -52,6 +52,7 @@ class TradeEnv(gym.Env):
         self.delta_time = sim_delta_time
         self.stock_data_path = stock_data_path
         self.result_path = result_path
+        self.select_num = select_num
         if env_id == 0 and os.path.exists(self.result_path):
             shutil.rmtree(self.result_path)
             os.makedirs(self.result_path)
@@ -126,10 +127,12 @@ class TradeEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         action = np.squeeze(action)
+        # 最大的前20只股票权重保留，其余置0
+        action[np.argpartition(action[:-1], self.select_num)[:action.shape[0] - 1 - self.select_num]] = 0.
         sub_action = action[:-1]
-        normed_sub_action = sub_action-sub_action.max()
+        normed_sub_action = sub_action - sub_action.max()
         exp_normed_sub_action = np.exp(normed_sub_action)
-        action[:-1] = exp_normed_sub_action/exp_normed_sub_action.sum()
+        action[:-1] = exp_normed_sub_action / exp_normed_sub_action.sum()
         self.step_ += 1
         if self.step_ >= self.episode_len or self.index >= len(self.time_list):
             self.done = True
@@ -222,7 +225,8 @@ class TradeEnv(gym.Env):
                     obs_pass_date=self.raw_time_list[self.raw_time_list.index(trade_time) - self.obs_time],
                     obs_next_pass_date=self.raw_time_list[self.raw_time_list.index(self.current_time) - self.obs_time])
         obs = self.get_state()
-        if self.done and ((self.env_type == 'train' and self.episode % 5 == 0) or self.env_type == 'test'):
+        if self.done and ((
+                                  self.env_type == 'train' and self.episode % 5 == 0) or self.env_type == 'test') and self.episode % 20 == 0:
             self.render('hybrid')
         return obs, reward, self.done, info
 
@@ -273,9 +277,11 @@ class TradeEnv(gym.Env):
             last_price = np.average(last_price[~last_price_mask])
 
             # 超额收益率
+            last_time_value = last_time_value.sum()
             reward = (((now_value.sum() - last_time_value) / last_time_value) - (
                     now_price - last_price) / last_price) * 100
-            assert not np.logical_or(np.isnan(reward).any(), np.isinf(reward).any())
+            # assert not np.logical_or(np.isnan(reward).any(), np.isinf(reward).any())
+            reward = np.nan_to_num(reward, nan=0., posinf=0., neginf=0.)
             # 累计收益率
             # reward = now_hist[-1].mean()
         else:

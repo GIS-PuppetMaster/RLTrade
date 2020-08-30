@@ -28,7 +28,7 @@ class GRUActor(nn.Module):
             stock_pos_input_size = np.prod(state_space['stock_position'].shape)
             self.stock_pos_fc = nn.Sequential(
                 nn.Linear(in_features=stock_pos_input_size, out_features=stock_pos_input_size // 2),
-                nn.ReLU())
+                nn.Tanh())
             body_input_size = forecast_output_shape + stock_pos_input_size // 2 + np.prod(state_space['money'].shape)
         else:
             body_input_size = forecast_output_shape
