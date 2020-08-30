@@ -258,23 +258,23 @@ class TradeEnv(gym.Env):
             now_price_mask = np.isnan(now_price)
             # 计算第二天开盘时当前资产配置价值
             now_value[~now_price_mask] = (self.stock_amount * now_price * 100)[~now_price_mask]
-            first_hist = self.trade_history[0]
-            first_price = first_hist[1]
+            last_hist = self.trade_history[-1]
+            last_price = last_hist[1]
             # first_value = first_time_value + first_hist[4]
 
             now_price_mask = np.isnan(now_price)
-            first_price_mask = np.isnan(first_price)
+            last_price_mask = np.isnan(last_price)
             now_weights = now_hist[3][~now_price_mask]
             # first_weights = first_hist[3][~first_price_mask]
             if now_weights.sum() == 0:
                 now_price = now_price.mean()
             else:
                 now_price = np.average(now_price[~now_price_mask], weights=now_weights)
-            first_price = np.average(first_price[~first_price_mask])
+            last_price = np.average(last_price[~last_price_mask])
 
             # 超额收益率
-            reward = (((now_value.sum() - self.principal) / self.principal) - (
-                    now_price - first_price) / first_price) * 100
+            reward = (((now_value.sum() - last_time_value) / last_time_value) - (
+                    now_price - last_price) / last_price) * 100
             assert not np.logical_or(np.isnan(reward).any(), np.isinf(reward).any())
             # 累计收益率
             # reward = now_hist[-1].mean()
