@@ -10,7 +10,7 @@
     "save_code": false
   },
   "env": {
-    "train_env_num": 1,
+    "train_env_num": 16,
     "test_env_num": 1,
     "wait_num": null,
     "time_out": null,
@@ -204,7 +204,7 @@
         "601998.XSHG"
       ],
       "result_path": "E:/运行结果/TD3/train/",
-      "principal": 1e8,
+      "principal": 1e6,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
@@ -421,7 +421,7 @@
         "601998.XSHG"
       ],
       "result_path": "E:/运行结果/TD3/test/",
-      "principal": 1e8,
+      "principal": 1e6,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,

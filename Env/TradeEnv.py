@@ -126,23 +126,6 @@ class TradeEnv(gym.Env):
         return self.get_state()
 
     def step(self, action: np.ndarray):
-        action = np.squeeze(action)-10
-        action[-1]=np.clip(action[-1],a_min=0, a_max=1)
-        # 最大的前20只股票权重保留，其余置0
-        partition = np.argsort(action[:-1])
-        empty_mask = partition[:- self.select_num]
-        trade_mask = partition[-self.select_num:]
-        action[empty_mask] = 0.
-        sub_action = action[trade_mask]
-        normed_sub_action = sub_action - sub_action.max()
-        exp_normed_sub_action = np.exp(normed_sub_action)
-        action[trade_mask] = exp_normed_sub_action / exp_normed_sub_action.sum()
-        self.step_ += 1
-        if self.step_ >= self.episode_len or self.index >= len(self.time_list):
-            self.done = True
-        # 记录交易时间
-        trade_time = self.current_time
-        # 交易标记
         # 当前（分钟）每股收盘/开盘价作为price
         if self.trade_time == 'close':
             price = self.stock_data[self.current_time][:, 1]
@@ -152,17 +135,28 @@ class TradeEnv(gym.Env):
             raise Exception(f"Wrong trade_time:{self.trade_time}")
         # 停牌股票股价为nan
         nan_mask = np.isnan(price)
+        action = np.squeeze(action).astype(np.float64)-10
+        action_masked = action[:-1].copy()
+        action_masked[nan_mask]=0.
+        action[-1]=np.clip(action[-1],a_min=0, a_max=1)
+        # 最大的前20只股票权重保留，其余置0
+        partition = np.argsort(action_masked)
+        empty_mask = partition[:- self.select_num]
+        trade_mask = partition[-self.select_num:]
+        action_masked[empty_mask] = 0.
+        sub_action = action_masked[trade_mask]
+        normed_sub_action = sub_action - sub_action.max()
+        exp_normed_sub_action = np.exp(normed_sub_action)
+        action_masked[trade_mask] = exp_normed_sub_action / exp_normed_sub_action.sum()
+        self.step_ += 1
+        if self.step_ >= self.episode_len or self.index >= len(self.time_list):
+            self.done = True
+        # 记录交易时间
+        trade_time = self.current_time
         # assert (price[~nan_mask] > 0).all()
         # 此次调整后投入股市的资金
         target_money = self.money * action[-1]
-        # 重新计算分配给每只股票的资金数目
-        action_masked = action[:-1].copy()
-        action_masked[nan_mask] = 0.
-        # 把错误分给停牌股票的资金按比例分配给未停牌股票
-        action_masked /= action_masked.sum()
         stock_target_money = target_money * action_masked
-        # 将因计算精度损失的资金全部加到第一只股票上面
-        stock_target_money[0] = target_money - stock_target_money[1:].sum()
         # assert np.abs(stock_target_money.sum() - target_money) < 1e-3
         # 按交易价格计算调整后的持有数量(手)
         target_amount = stock_target_money // (100 * price * (1 + self.poundage_rate))
