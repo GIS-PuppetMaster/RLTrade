@@ -455,8 +455,8 @@
       "forecast_length": 2,
       "stack_types": [
         "generic",
-        "trend",
-        "seasonality"
+        "generic",
+        "generic"
       ],
       "nb_blocks_pre_stack": 2,
       "thetas_dims": [
@@ -472,8 +472,8 @@
       "forecast_length": 2,
       "stack_types": [
         "generic",
-        "trend",
-        "seasonality"
+        "generic",
+        "generic"
       ],
       "nb_blocks_pre_stack": 2,
       "thetas_dims": [
@@ -489,8 +489,8 @@
       "forecast_length": 2,
       "stack_types": [
         "generic",
-        "trend",
-        "seasonality"
+        "generic",
+        "generic"
       ],
       "nb_blocks_pre_stack": 2,
       "thetas_dims": [

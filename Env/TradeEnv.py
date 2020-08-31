@@ -210,6 +210,7 @@ class TradeEnv(gym.Env):
         # 如果采用t+1结算 and 交易了 则跳到下一天
         self.set_next_day()
         # 先添加到历史中，reward为空
+        action[:-1] = action_masked
         his_log = [trade_time, price.copy(), quant.copy(), self.stock_amount.copy(), self.money, None, action,
                    self.last_time_stock_value.copy(), self.buy_value.copy(), self.sold_value.copy(), profit_ratio]
 
@@ -538,7 +539,7 @@ class TradeEnv(gym.Env):
             for i in range(0, len(self.stock_codes) * 5, 5):
                 step = dict(
                     method="update",
-                    args=[{'visible': [False] * (len(self.stock_codes) * 5 + 5)},
+                    args=[{'visible': [False] * (len(self.stock_codes) * 5 + 3)},
                           {'title': f"{self.stock_codes[i // 5]}回测结果, 初始资金：{self.principal}"}
                           ],
                     label=self.stock_codes[i // 5],
