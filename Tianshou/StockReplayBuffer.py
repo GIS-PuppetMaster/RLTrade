@@ -5,58 +5,67 @@ import numpy as np
 from tianshou.data import Batch, SegmentTree, to_numpy
 from collections import OrderedDict
 import pandas as pd
-
+import os
 from Util.Util import get_submodule
+import dill
 
-
-def read_stock_data(stock_codes, stock_data_path, data_type='day', **kwargs):
+def read_stock_data(stock_codes, stock_data_path, data_type='day', load_from_cache=True, **kwargs):
+    # in order by stock_code
+    save_path = os.path.join(stock_data_path, 'TradeEnvData.dill')
     stocks = OrderedDict()
     date_index = []
     # in order by stock_code
     stock_codes = [stock_code.replace('.', '_') for stock_code in stock_codes]
     stock_codes = sorted(stock_codes)
-    for idx, stock_code in enumerate(stock_codes):
-        print(f'{idx + 1}/{len(stock_codes)} loaded:{stock_code}')
-        if data_type == 'day':
-            raw = pd.read_csv(stock_data_path + stock_code + '_with_indicator.csv', index_col=False)
-        else:
-            raise Exception(f"Wrong data type for:{data_type}")
-        raw_moneyflow = pd.read_csv(stock_data_path + stock_code + '_moneyflow.csv', index_col=False)[
-            ['date', 'change_pct', 'net_pct_main', 'net_pct_xl', 'net_pct_l', 'net_pct_m', 'net_pct_s']].apply(
-            lambda x: x / 100 if isinstance(x[1], np.float64) else x)
-        raw = pd.merge(raw, raw_moneyflow, left_on='Unnamed: 0', right_on='date', sort=False, copy=False).drop(
-            'date', 1).rename(columns={'Unnamed: 0': 'date'})
-        raw.fillna(method='ffill', inplace=True)
-        date_index.append(np.array(raw['date']))
-        raw.set_index('date', inplace=True)
-        stocks[stock_code] = raw
-    # 生成各支股票数据按时间的并集
-    global_date_intersection = date_index[0]
-    for i in range(1, len(date_index)):
-        global_date_intersection = np.union1d(global_date_intersection, date_index[i])
-    global_date_intersection = global_date_intersection.tolist()
-    # 根据并集补全停牌数据
-    for key in stocks.keys():
-        value = stocks[key]
-        date = value.index.tolist()
-        # 需要填充的日期
-        fill = np.setdiff1d(global_date_intersection, date)
-        for fill_date in fill:
-            value.loc[fill_date] = [np.nan] * value.shape[1]
-        if len(fill) > 0:
-            value.sort_index(inplace=True)
-        stocks[key] = np.array(value)
-    # 生成股票数据
-    time_series = OrderedDict()
-    # in order by stock_codes
-    # 当前时间在state最后
-    for i in range(len(global_date_intersection)):
-        date = global_date_intersection[i]
-        stock_data_in_date = []
+    if load_from_cache and os.path.exists(save_path):
+        with open(save_path, 'rb') as f:
+            stock_codes_, time_series, global_date_intersection = dill.load(f)
+        assert stock_codes == stock_codes_
+        assert list(time_series.values())[0].shape == (len(stock_codes), kwargs['feature_num'])
+        print("buffer数据读取完毕")
+    else:
+        for idx, stock_code in enumerate(stock_codes):
+            print(f'{idx + 1}/{len(stock_codes)} loaded:{stock_code}')
+            if data_type == 'day':
+                raw = pd.read_csv(stock_data_path + stock_code + '_with_indicator.csv', index_col=False)
+            else:
+                raise Exception(f"Wrong data type for:{data_type}")
+            raw_moneyflow = pd.read_csv(stock_data_path + stock_code + '_moneyflow.csv', index_col=False)[
+                ['date', 'change_pct', 'net_pct_main', 'net_pct_xl', 'net_pct_l', 'net_pct_m', 'net_pct_s']].apply(
+                lambda x: x / 100 if isinstance(x[1], np.float64) else x)
+            raw = pd.merge(raw, raw_moneyflow, left_on='Unnamed: 0', right_on='date', sort=False, copy=False).drop(
+                'date', 1).rename(columns={'Unnamed: 0': 'date'})
+            raw.fillna(method='ffill', inplace=True)
+            date_index.append(np.array(raw['date']))
+            raw.set_index('date', inplace=True)
+            stocks[stock_code] = raw
+        # 生成各支股票数据按时间的并集
+        global_date_intersection = date_index[0]
+        for i in range(1, len(date_index)):
+            global_date_intersection = np.union1d(global_date_intersection, date_index[i])
+        global_date_intersection = global_date_intersection.tolist()
+        # 根据并集补全停牌数据
         for key in stocks.keys():
-            value = stocks[key][i, :]
-            stock_data_in_date.append(value.tolist())
-        time_series[date] = np.array(stock_data_in_date)
+            value = stocks[key]
+            date = value.index.tolist()
+            # 需要填充的日期
+            fill = np.setdiff1d(global_date_intersection, date)
+            for fill_date in fill:
+                value.loc[fill_date] = [np.nan] * value.shape[1]
+            if len(fill) > 0:
+                value.sort_index(inplace=True)
+            stocks[key] = np.array(value)
+        # 生成股票数据
+        time_series = OrderedDict()
+        # in order by stock_codes
+        # 当前时间在state最后
+        for i in range(len(global_date_intersection)):
+            date = global_date_intersection[i]
+            stock_data_in_date = []
+            for key in stocks.keys():
+                value = stocks[key][i, :]
+                stock_data_in_date.append(value.tolist())
+            time_series[date] = np.array(stock_data_in_date)
     return stock_codes, time_series, global_date_intersection
 
 

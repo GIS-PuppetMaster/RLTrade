@@ -29,7 +29,6 @@ if __name__ == '__main__':
     run_id = None
     if config['global_wandb'] and not args.test:
         import wandb
-
         wandb.init(**config['wandb'], config=config)
         if save_dir is None:
             save_dir = wandb.run.dir + "\\" + "policy.pth"
