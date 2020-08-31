@@ -8,6 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 from Tianshou.StockReplayBuffer import *
 import json
 import argparse
+from Tianshou.Trainer.offpolicy_trainer import offpolicy_trainer
 import os
 
 
@@ -78,7 +79,7 @@ if __name__ == '__main__':
 
     if not args.test:
         writer = SummaryWriter(config['train']['log_dir'])
-        result = ts.trainer.offpolicy_trainer(policy, train_collector, test_collector,
+        result = offpolicy_trainer(policy, train_collector, test_collector,
                                               **config['train']['train_parameter'],
                                               writer=writer,
                                               save_fn=lambda p: torch.save(p.state_dict(), save_dir))

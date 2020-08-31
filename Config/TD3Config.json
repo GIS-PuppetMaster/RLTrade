@@ -10,7 +10,7 @@
     "save_code": false
   },
   "env": {
-    "train_env_num": 16,
+    "train_env_num": 1,
     "test_env_num": 1,
     "wait_num": null,
     "time_out": null,

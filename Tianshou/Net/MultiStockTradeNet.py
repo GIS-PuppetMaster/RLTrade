@@ -83,6 +83,14 @@ class GRUActor(nn.Module):
         logits = torch.cat((stock_ratio, logits), dim=1)
         return logits, state
 
+    def BN_train(self, mode):
+        for module in self.children():
+            if isinstance(module, nn.BatchNorm1d):
+                module.train(mode)
+            elif isinstance(module, nn.Sequential):
+                for layer in module:
+                    if isinstance(layer, nn.BatchNorm1d):
+                        layer.train(mode)
 
 class GRUCritic(nn.Module):
     def __init__(self, state_space, action_shape, agent_state, gpu, forecast_length, stack_types, nb_blocks_pre_stack,
@@ -153,3 +161,12 @@ class GRUCritic(nn.Module):
         hidden = torch.cat((hidden, action), dim=1)
         logits = self.output(hidden)
         return logits
+
+    def BN_train(self, mode):
+        for module in self.children():
+            if isinstance(module, nn.BatchNorm1d):
+                module.train(mode)
+            elif isinstance(module, nn.Sequential):
+                for layer in module:
+                    if isinstance(layer, nn.BatchNorm1d):
+                        layer.train(mode)
