@@ -365,7 +365,7 @@ class TradeEnv(gym.Env):
                 return self.draw(mode)
 
     def draw(self, mode):
-        if self.trade_history.__len__() <= 1:
+        if self.trade_history.__len__() <= 1 or self.env_id != 0:
             return
         raw_time_array = np.array([i[0] for i in self.trade_history])
         time_list = raw_time_array.tolist()
