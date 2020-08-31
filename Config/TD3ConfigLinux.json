@@ -228,7 +228,7 @@
       "feature_num": 32,
       "noise_rate": 0,
       "load_from_cache": true,
-      "wandb_log": true,
+      "wandb_log": false,
       "env_type": "train"
     },
     "test": {
@@ -520,7 +520,7 @@
     },
     "train_parameter": {
       "max_epoch": 1000,
-      "step_per_epoch": 1,
+      "step_per_epoch": 0.05,
       "collect_per_step": 1000,
       "episode_per_test": 1,
       "batch_size": 16,

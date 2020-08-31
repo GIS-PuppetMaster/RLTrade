@@ -126,17 +126,18 @@ def offpolicy_trainer(
             if t.n <= t.total:
                 t.update()
         # test
-        result = test_episode(
-            policy, test_collector, test_fn, epoch, episode_per_test)
-        if best_epoch == -1 or best_reward < result['rew']:
-            best_reward = result['rew']
-            best_epoch = epoch
-            if save_fn:
-                save_fn(policy)
-        if verbose:
-            print(f'Epoch #{epoch}: test_reward: {result["rew"]:.6f}, '
-                  f'best_reward: {best_reward:.6f} in #{best_epoch}')
-        if stop_fn and stop_fn(best_reward):
-            break
+        if episode_per_test<1 and epoch%(1/episode_per_test)==0:
+            result = test_episode(
+                policy, test_collector, test_fn, epoch, episode_per_test)
+            if best_epoch == -1 or best_reward < result['rew']:
+                best_reward = result['rew']
+                best_epoch = epoch
+                if save_fn:
+                    save_fn(policy)
+            if verbose:
+                print(f'Epoch #{epoch}: test_reward: {result["rew"]:.6f}, '
+                      f'best_reward: {best_reward:.6f} in #{best_epoch}')
+            if stop_fn and stop_fn(best_reward):
+                break
     return gather_info(
         start_time, train_collector, test_collector, best_reward)
