@@ -28,19 +28,27 @@ class GRUActor(nn.Module):
             stock_pos_input_size = np.prod(state_space['stock_position'].shape)
             self.stock_pos_fc = nn.Sequential(
                 nn.Linear(in_features=stock_pos_input_size, out_features=stock_pos_input_size // 2),
+                nn.BatchNorm1d(stock_pos_input_size//2),
                 nn.Tanh())
             body_input_size = forecast_output_shape + stock_pos_input_size // 2 + np.prod(state_space['money'].shape)
         else:
             body_input_size = forecast_output_shape
         self.body = nn.Sequential(
             nn.Linear(in_features=body_input_size, out_features=action_shape[0]),
+            nn.BatchNorm1d(action_shape[0]),
             nn.Tanh(),
         )
         self.output1 = nn.Sequential(
+            nn.Linear(in_features=action_shape[0], out_features=action_shape[0]),
+            nn.BatchNorm1d(action_shape[0]),
+            nn.ReLU(),
             nn.Linear(in_features=action_shape[0], out_features=action_shape[0] - 1),
             nn.ReLU()
         )
         self.output2 = nn.Sequential(
+            nn.Linear(in_features=action_shape[0], out_features=action_shape[0]),
+            nn.BatchNorm1d(action_shape[0]),
+            nn.PReLU(),
             nn.Linear(in_features=action_shape[0], out_features=1),
             nn.Sigmoid()
         )
@@ -99,6 +107,7 @@ class GRUCritic(nn.Module):
 
             self.stock_pos_fc = nn.Sequential(
                 nn.Linear(in_features=stock_pos_input_size, out_features=stock_pos_input_size // 2),
+                nn.BatchNorm1d(stock_pos_input_size//2),
                 nn.ReLU())
             body_input_size = forecast_output_shape + stock_pos_input_size // 2 + np.prod(state_space['money'].shape)
         else:
@@ -106,8 +115,10 @@ class GRUCritic(nn.Module):
         body_input_size += action_shape[0]
         self.output = nn.Sequential(
             nn.Linear(in_features=body_input_size, out_features=256),
+            nn.BatchNorm1d(256),
             nn.Tanh(),
             nn.Linear(in_features=256, out_features=256),
+            nn.BatchNorm1d(256),
             nn.Tanh(),
             nn.Linear(in_features=256, out_features=1),
         )

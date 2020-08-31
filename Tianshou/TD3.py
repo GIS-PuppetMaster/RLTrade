@@ -11,8 +11,8 @@ import argparse
 import os
 
 
-def make_env(i, env_type):
-    return lambda: TradeEnv(**config['env'][env_type], env_id=i, run_id=run_id, config=config, testmode=args.test)
+def make_env(i, env_type, test_mode):
+    return lambda: TradeEnv(**config['env'][env_type], env_id=i, run_id=run_id, config=config, test_mode=test_mode)
 
 
 if __name__ == '__main__':
@@ -36,14 +36,14 @@ if __name__ == '__main__':
         run_id = wandb.run.id
     if not args.test:
         train_envs = ts.env.SubprocVectorEnv(
-            [make_env(i, 'train') for i in range(config['env']['train_env_num'])],
+            [make_env(i, 'train', args.test) for i in range(config['env']['train_env_num'])],
             wait_num=config['env']['wait_num'], timeout=config['env']['time_out'])
     else:
         config['env']['test']['result_path'] = 'E:/运行结果/TD3/test_with_trained_model/'
         config['env']['test']['wandb_log'] = False
         config['env']['test']['auto_open_result'] = True
     test_envs = ts.env.SubprocVectorEnv(
-        [make_env(i, 'test') for i in range(config['env']['test_env_num'])],
+        [make_env(i, 'test', args.test) for i in range(config['env']['test_env_num'])],
         wait_num=config['env']['wait_num'], timeout=config['env']['time_out'])
 
     state_space = test_envs.observation_space[0]
@@ -60,7 +60,10 @@ if __name__ == '__main__':
         actor_net = actor_net.cuda()
         critic1_net = critic1_net.cuda()
         critic2_net = critic2_net.cuda()
-
+    if args.test:
+        actor_net = actor_net.eval()
+        critic1_net = critic1_net.eval()
+        critic2_net = critic2_net.eval()
     policy = ts.policy.TD3Policy(actor_net, actor_optim, critic1_net, critic1_optim, critic2_net, critic2_optim,
                                  **config['policy']['policy_parameter'],
                                  action_range=(
@@ -70,7 +73,8 @@ if __name__ == '__main__':
                                             StockPrioritizedReplayBuffer(**config['train']['replay_buffer'],
                                                                          **config['env']['train']))
     else:
-        policy.load_state_dict(torch.load(save_dir))
+        # policy.load_state_dict(torch.load(save_dir))
+        pass
 
     test_collector = ts.data.Collector(policy, test_envs)
 
