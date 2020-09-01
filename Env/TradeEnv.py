@@ -136,15 +136,20 @@ class TradeEnv(gym.Env):
             raise Exception(f"Wrong trade_time:{self.trade_time}")
         # 停牌股票股价为nan
         nan_mask = np.isnan(price)
+        # 减去Tianshou加上的action_bias
         action = np.squeeze(action).astype(np.float64) - 10
+        # 遮盖停牌股票交易指令
         action_masked = action[:-1].copy()
         action_masked[nan_mask] = 0.
+        # 剪裁投入资金比例
         action[-1] = np.clip(action[-1], a_min=0, a_max=1)
         # 最大的前20只股票权重保留，其余置0
         partition = np.argsort(action_masked)
         empty_mask = partition[:- self.select_num]
         trade_mask = partition[-self.select_num:]
+        # 非选中股票平仓
         action_masked[empty_mask] = 0.
+        # 选中股票使用softmax加权
         sub_action = action_masked[trade_mask]
         normed_sub_action = sub_action - sub_action.max()
         exp_normed_sub_action = np.exp(normed_sub_action)
@@ -157,6 +162,7 @@ class TradeEnv(gym.Env):
         # assert (price[~nan_mask] > 0).all()
         # 此次调整后投入股市的资金
         target_money = self.money * action[-1]
+        # 计算每只股票投入资金
         stock_target_money = target_money * action_masked
         # assert np.abs(stock_target_money.sum() - target_money) < 1e-3
         # 按交易价格计算调整后的持有数量(手)
@@ -214,7 +220,7 @@ class TradeEnv(gym.Env):
         his_log = [trade_time, price.copy(), quant.copy(), self.stock_amount.copy(), self.money, None, action,
                    self.last_time_stock_value.copy(), self.buy_value.copy(), self.sold_value.copy(), profit_ratio]
 
-        reward = self.get_reward(his_log, last_time_value)
+        reward = self.get_reward(his_log, last_time_value, price)
         his_log[5] = reward
         self.trade_history.append(his_log)
         if self.wandb_log:
@@ -254,7 +260,7 @@ class TradeEnv(gym.Env):
             obs['money'] = money_obs
         return obs
 
-    def get_reward(self, now_hist, last_time_value):
+    def get_reward(self, now_hist, last_time_value, price):
         if len(self.trade_history) >= 2:
             # 当前价格按照交易日第二天开盘价计算
             now_price = self.stock_data[self.current_time][:, 0]
@@ -262,24 +268,19 @@ class TradeEnv(gym.Env):
             now_price_mask = np.isnan(now_price)
             # 计算第二天开盘时当前资产配置价值
             now_value[~now_price_mask] = (self.stock_amount * now_price * 100)[~now_price_mask]
-            last_hist = self.trade_history[-1]
-            last_price = last_hist[1]
+            last_price = price
             # first_value = first_time_value + first_hist[4]
 
             now_price_mask = np.isnan(now_price)
             last_price_mask = np.isnan(last_price)
-            now_weights = now_hist[3][~now_price_mask]
             # first_weights = first_hist[3][~first_price_mask]
-            if now_weights.sum() == 0:
-                now_price = now_price.mean()
-            else:
-                now_price = np.average(now_price[~now_price_mask], weights=now_weights)
+
+            now_price = np.average(now_price[~now_price_mask])
             last_price = np.average(last_price[~last_price_mask])
 
             # 超额收益率
             last_time_value = last_time_value.sum()
-            reward = (((now_value.sum()+self.money) / (last_time_value + self.trade_history[-1][4]) - 1) - (
-                    now_price - last_price) / last_price) * 100
+            reward = ((now_value.sum()+self.money) / (last_time_value+self.money) -1) - (now_price / last_price-1)
             # assert not np.logical_or(np.isnan(reward).any(), np.isinf(reward).any())
             reward = np.nan_to_num(reward, nan=0., posinf=0., neginf=0.)
             # 累计收益率

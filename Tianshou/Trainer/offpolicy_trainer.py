@@ -126,7 +126,7 @@ def offpolicy_trainer(
             if t.n <= t.total:
                 t.update()
         # test
-        if episode_per_test<1 and epoch%(1/episode_per_test)==0:
+        if (episode_per_test<1 and epoch%(1/episode_per_test)==0) or episode_per_test>=1:
             result = test_episode(
                 policy, test_collector, test_fn, epoch, episode_per_test)
             if best_epoch == -1 or best_reward < result['rew']:
