@@ -10,6 +10,7 @@ import wandb
 import shutil
 import dill
 from collections import OrderedDict
+from empyrical import sortino_ratio
 
 """
 日间择时，开盘或收盘交易
@@ -118,7 +119,7 @@ class TradeEnv(gym.Env):
         # 持有股票数目(股)
         self.stock_amount = [0] * len(self.stock_codes)
         # 上次购入股票所花金额
-        self.last_time_stock_value = np.zeros(shape=(len(self.stock_codes),))
+        self.stock_value = np.zeros(shape=(len(self.stock_codes),))
         # 交易历史
         self.trade_history = []
         self.episode += 1
@@ -126,14 +127,18 @@ class TradeEnv(gym.Env):
         self.start_time = self.current_time
         return self.get_state()
 
-    def step(self, action: np.ndarray):
-        # 当前（分钟）每股收盘/开盘价作为price
+    def get_current_price(self):
         if self.trade_time == 'close':
             price = self.stock_data[self.current_time][:, 1]
         elif self.trade_time == 'open':
             price = self.stock_data[self.current_time][:, 0]
         else:
             raise Exception(f"Wrong trade_time:{self.trade_time}")
+        return price
+
+    def step(self, action: np.ndarray):
+        # 当前（分钟）每股收盘/开盘价作为price
+        price = self.get_current_price()
         # 停牌股票股价为nan
         nan_mask = np.isnan(price)
         # 减去Tianshou加上的action_bias
@@ -187,9 +192,9 @@ class TradeEnv(gym.Env):
         # assert not np.isnan(target_amount).any()
         self.stock_amount = target_amount
         # 保存交易前所有股票价值
-        last_time_value = self.last_time_stock_value.copy()
+        last_time_value = self.stock_value.copy()
         # 计算并更新当前每只未停牌股票的价值， 停牌股票价值保留上次计算结果
-        self.last_time_stock_value[~nan_mask] = (self.stock_amount * price * 100)[~nan_mask]
+        self.stock_value[~nan_mask] = (self.stock_amount * price * 100)[~nan_mask]
 
         buy_quant = quant.copy()
         buy_quant[buy_quant < 0] = 0.
@@ -209,7 +214,7 @@ class TradeEnv(gym.Env):
 
         # 历史卖出价值（扣除手续费）+当前价格下持有股票的价值)/历史买入花费（算手续费
         profit_ratio = np.nan_to_num(
-            (self.last_time_stock_value + self.sold_value - self.buy_value) / self.first_buy_value, nan=0., posinf=0.,
+            (self.stock_value + self.sold_value - self.buy_value) / self.first_buy_value, nan=0., posinf=0.,
             neginf=0.)
         self.last_sold_value = sold_value
         # 计算下一状态和奖励
@@ -217,12 +222,19 @@ class TradeEnv(gym.Env):
         self.set_next_day()
         # 先添加到历史中，reward为空
         action[:-1] = action_masked
+        # 计算非累计每日回报率
+        next_price = self.get_current_price()
+        # 计算第二天的资产价值
+        next_price_mask = np.isnan(next_price)
+        last_time_value[~next_price_mask] = (self.stock_amount * next_price * 100)[~next_price_mask]
+        # 计算当天非累积回报率
+        noncum_return_profit_ratio = (self.money + last_time_value.sum()) / (self.money + self.stock_value.sum()) - 1
         his_log = [trade_time, price.copy(), quant.copy(), self.stock_amount.copy(), self.money, None, action,
-                   self.last_time_stock_value.copy(), self.buy_value.copy(), self.sold_value.copy(), profit_ratio]
-
-        reward = self.get_reward(his_log, last_time_value, price)
-        his_log[5] = reward
+                   self.stock_value.copy(), self.buy_value.copy(), self.sold_value.copy(), profit_ratio,
+                   noncum_return_profit_ratio]
         self.trade_history.append(his_log)
+        reward = self.get_reward()
+        self.trade_history[-1][5] = reward
         if self.wandb_log:
             wandb.log({f'{self.env_type}_{self.env_id}_episode': self.episode,
                        f'{self.env_type}_{self.env_id}_step': self.step_,
@@ -260,31 +272,26 @@ class TradeEnv(gym.Env):
             obs['money'] = money_obs
         return obs
 
-    def get_reward(self, now_hist, last_time_value, price):
+    def get_reward(self):
         if len(self.trade_history) >= 2:
             # 当前价格按照交易日第二天开盘价计算
-            now_price = self.stock_data[self.current_time][:, 0]
-            now_value = last_time_value.copy()
-            now_price_mask = np.isnan(now_price)
-            # 计算第二天开盘时当前资产配置价值
-            now_value[~now_price_mask] = (self.stock_amount * now_price * 100)[~now_price_mask]
-            last_price = price
-            # first_value = first_time_value + first_hist[4]
+            next_price = self.stock_data[self.current_time][:, 0]
+            first_price = self.trade_history[0][1]
+            next_price_mask = np.isnan(next_price)
+            first_price_mask = np.isnan(first_price)
 
-            now_price_mask = np.isnan(now_price)
-            last_price_mask = np.isnan(last_price)
-            # first_weights = first_hist[3][~first_price_mask]
+            next_price = np.average(next_price[~next_price_mask])
+            first_price = np.average(first_price[~first_price_mask])
 
-            now_price = np.average(now_price[~now_price_mask])
-            last_price = np.average(last_price[~last_price_mask])
-
-            # 超额收益率
-            last_time_value = last_time_value.sum()
-            reward = ((now_value.sum()+self.money) / (last_time_value+self.money) -1) - (now_price / last_price-1)
-            # assert not np.logical_or(np.isnan(reward).any(), np.isinf(reward).any())
-            reward = np.nan_to_num(reward, nan=0., posinf=0., neginf=0.)
-            # 累计收益率
-            # reward = now_hist[-1].mean()
+            minimum_acceptable_return = next_price / first_price - 1
+            noncum_return_profit_ratio = np.array([i[11] for i in self.trade_history])
+            reward = sortino_ratio(noncum_return_profit_ratio, minimum_acceptable_return)
+            if np.isnan(reward) or np.isinf(reward):
+                his_reward = np.array([i[5] for i in self.trade_history])[:-1]
+                his_reward = his_reward.astype(np.float32)
+                nan_mask = np.isnan(his_reward)
+                filtered_his_reward = his_reward[~nan_mask]
+                reward = filtered_his_reward if filtered_his_reward.shape[0] > 0 else 0
         else:
             reward = 0
         return reward
@@ -379,7 +386,7 @@ class TradeEnv(gym.Env):
         raw_amount_array = np.array([i[3] for i in self.trade_history]).astype(np.float32)
         raw_reward_array = np.array([i[5] for i in self.trade_history]).astype(np.float32)
         raw_base_array = raw_price_array / raw_price_array[0, :] - 1
-        base_nan_mask = np.isnan(raw_base_array)
+        # base_nan_mask = np.isnan(raw_base_array)
         # base_array = raw_base_array[~base_nan_mask].reshape((raw_base_array.shape[0], -1))
         dis = self.result_path
         path = dis + (f"episode_{self.episode}_id_{self.env_id}.html").replace(':', "_")
@@ -388,7 +395,7 @@ class TradeEnv(gym.Env):
         # profit_min = np.min(raw_profit_array, axis=1).tolist()[::-1]
         # profit_max = np.max(raw_profit_array, axis=1).tolist()
 
-        base_mean = (raw_price_array.mean(axis=1) / raw_price_array[0, :].mean() - 1)
+        base_mean = raw_price_array.mean(axis=1) / raw_price_array[0, :].mean() - 1
         # base_min = np.min(base_array, axis=1).tolist()[::-1]
         # base_max = np.max(base_array, axis=1).tolist()
         if self.env_id == 0 and not os.path.exists(dis):

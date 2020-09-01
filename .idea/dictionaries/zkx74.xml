@@ -8,6 +8,7 @@
       <w>logits</w>
       <w>moneyflow</w>
       <w>ndarray</w>
+      <w>noncum</w>
       <w>optim</w>
       <w>quant</w>
       <w>reinit</w>

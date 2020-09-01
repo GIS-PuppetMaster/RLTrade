@@ -420,7 +420,7 @@
         "601989.XSHG",
         "601998.XSHG"
       ],
-      "result_path": "../PlotOutput/train/",
+      "result_path": "../PlotOutput/test/",
       "principal": 1e6,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",

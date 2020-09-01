@@ -5,6 +5,8 @@ from scp import SCPClient
 
 server_list = [('124.70.32.29', 22)]
 abs_path =os.path.split(os.path.abspath(__file__))[:-1][0]
+# file = abs_path + '\\TensorboardLog\\'
+# server_path = '/usr/zkx/Stable-BaselineTrading/TensorboardLog/policy.pth'
 file = abs_path + '\\'
 server_path = '/usr/zkx/Stable-BaselineTrading/PlotOutput/'
 for ip, port in server_list:
