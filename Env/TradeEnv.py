@@ -278,7 +278,7 @@ class TradeEnv(gym.Env):
 
             # 超额收益率
             last_time_value = last_time_value.sum()
-            reward = (((now_value.sum() - last_time_value) / last_time_value) - (
+            reward = (((now_value.sum()+self.money) / (last_time_value + self.trade_history[-1][4]) - 1) - (
                     now_price - last_price) / last_price) * 100
             # assert not np.logical_or(np.isnan(reward).any(), np.isinf(reward).any())
             reward = np.nan_to_num(reward, nan=0., posinf=0., neginf=0.)
