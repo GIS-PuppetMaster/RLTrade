@@ -380,7 +380,7 @@ class TradeEnv(gym.Env):
         raw_reward_array = np.array([i[5] for i in self.trade_history]).astype(np.float32)
         raw_base_array = raw_price_array / raw_price_array[0, :] - 1
         base_nan_mask = np.isnan(raw_base_array)
-        base_array = raw_base_array[~base_nan_mask].reshape((raw_base_array.shape[0], -1))
+        # base_array = raw_base_array[~base_nan_mask].reshape((raw_base_array.shape[0], -1))
         dis = self.result_path
         path = dis + (f"episode_{self.episode}_id_{self.env_id}.html").replace(':', "_")
         profit_mean = (np.array([i[7] for i in self.trade_history]).sum(axis=1) + np.array(
@@ -388,7 +388,7 @@ class TradeEnv(gym.Env):
         # profit_min = np.min(raw_profit_array, axis=1).tolist()[::-1]
         # profit_max = np.max(raw_profit_array, axis=1).tolist()
 
-        base_mean = np.mean(base_array, axis=1).tolist()
+        base_mean = (raw_price_array.mean(axis=1) / raw_price_array[0, :].mean() - 1)
         # base_min = np.min(base_array, axis=1).tolist()[::-1]
         # base_max = np.max(base_array, axis=1).tolist()
         if self.env_id == 0 and not os.path.exists(dis):

@@ -8,8 +8,8 @@ server_list = [('124.70.32.29', 22)]
 abs_path = os.path.split(os.path.abspath(__file__))[:-1][0]
 # file = abs_path + '\\Config\\PEMS03\\'
 # server_path = '/usr/zkx/GNN-NAS-RL/Config/PEMS03/'
-file = abs_path + '\\Env\\TradeEnv.py'
-server_path = '/usr/zkx/Stable-BaselineTrading/Env/'
+file = abs_path + '\\Tianshou\\Trainer\\offpolicy_trainer.py'
+server_path = '/usr/zkx/Stable-BaselineTrading/Tianshou/Trainer/'
 for ip, port in server_list:
     ssh = SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
