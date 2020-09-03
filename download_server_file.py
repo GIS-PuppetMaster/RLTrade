@@ -3,7 +3,7 @@ import paramiko
 from paramiko import SSHClient
 from scp import SCPClient
 
-server_list = [('124.70.32.29', 22)]
+server_list = [('124.70.7.137', 22)]
 abs_path =os.path.split(os.path.abspath(__file__))[:-1][0]
 # file = abs_path + '\\TensorboardLog\\'
 # server_path = '/usr/zkx/Stable-BaselineTrading/TensorboardLog/policy.pth'

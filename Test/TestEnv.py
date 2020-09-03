@@ -41,4 +41,4 @@ while not done:
     action += (env.action_space.low + env.action_space.high)/2
     obs, reward, done, _ = env.step(action)
     i += 1
-env.render()
+env.render('native')

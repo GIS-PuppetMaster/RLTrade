@@ -222,16 +222,13 @@ class TradeEnv(gym.Env):
         self.set_next_day()
         # 先添加到历史中，reward为空
         action[:-1] = action_masked
-        # 计算非累计每日回报率
-        next_price = self.get_current_price()
-        # 计算第二天的资产价值
-        next_price_mask = np.isnan(next_price)
-        last_time_value[~next_price_mask] = (self.stock_amount * next_price * 100)[~next_price_mask]
-        # 计算当天非累积回报率
-        noncum_return_profit_ratio = (self.money + last_time_value.sum()) / (self.money + self.stock_value.sum()) - 1
+        # 计算累计回报率
+        cum_return_profit_ratio = (self.money +self.stock_value.sum()) / self.principal - 1
+        # 计算每天股价变化率
+        price_change_rate = price.mean()/self.trade_history[-1][1].mean() - 1 if len(self.trade_history) >0 else 0.
         his_log = [trade_time, price.copy(), quant.copy(), self.stock_amount.copy(), self.money, None, action,
                    self.stock_value.copy(), self.buy_value.copy(), self.sold_value.copy(), profit_ratio,
-                   noncum_return_profit_ratio]
+                   cum_return_profit_ratio, price_change_rate]
         self.trade_history.append(his_log)
         reward = self.get_reward()
         self.trade_history[-1][5] = reward
@@ -274,24 +271,15 @@ class TradeEnv(gym.Env):
 
     def get_reward(self):
         if len(self.trade_history) >= 2:
-            # 当前价格按照交易日第二天开盘价计算
-            next_price = self.stock_data[self.current_time][:, 0]
-            first_price = self.trade_history[0][1]
-            next_price_mask = np.isnan(next_price)
-            first_price_mask = np.isnan(first_price)
-
-            next_price = np.average(next_price[~next_price_mask])
-            first_price = np.average(first_price[~first_price_mask])
-
-            minimum_acceptable_return = next_price / first_price - 1
-            noncum_return_profit_ratio = np.array([i[11] for i in self.trade_history])
+            noncum_return_profit_ratio = np.diff(np.array([i[11] for i in self.trade_history]), prepend=0)
+            minimum_acceptable_return = np.array([i[12] for i in self.trade_history])
             reward = sortino_ratio(noncum_return_profit_ratio, minimum_acceptable_return)
             if np.isnan(reward) or np.isinf(reward):
-                his_reward = np.array([i[5] for i in self.trade_history])[:-1]
+                his_reward = np.array([i[5] for i in self.trade_history[:-1]])
                 his_reward = his_reward.astype(np.float32)
                 nan_mask = np.isnan(his_reward)
                 filtered_his_reward = his_reward[~nan_mask]
-                reward = filtered_his_reward if filtered_his_reward.shape[0] > 0 else 0
+                reward = filtered_his_reward[-1] if filtered_his_reward.shape[0] > 0 else 0
         else:
             reward = 0
         return reward
@@ -381,7 +369,7 @@ class TradeEnv(gym.Env):
         raw_price_array = pd.DataFrame(np.array([i[1] for i in self.trade_history]).astype(np.float32))
         raw_price_array.fillna(method='ffill', inplace=True)
         raw_price_array.fillna(method='bfill', inplace=True)
-        raw_price_array = np.array(raw_price_array)
+        raw_price_array = np.nan_to_num(np.array(raw_price_array))
         raw_quant_array = np.array([i[2] for i in self.trade_history]).astype(np.float32)
         raw_amount_array = np.array([i[3] for i in self.trade_history]).astype(np.float32)
         raw_reward_array = np.array([i[5] for i in self.trade_history]).astype(np.float32)
