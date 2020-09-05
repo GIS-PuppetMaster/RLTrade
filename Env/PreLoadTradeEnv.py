@@ -58,7 +58,7 @@ class TradeEnv(gym.Env):
         self.feature_num = feature_num
         self.noise_rate = noise_rate
         self.obs_time = obs_time_size
-        self.post_processor = [get_submodule(submodule) for submodule in post_processor]
+        self.post_processor = get_modules(post_processor)
         self.agent_state = agent_state
         self.load_from_cache = load_from_cache
         # raw_time_list包含了原始数据中的所有日期

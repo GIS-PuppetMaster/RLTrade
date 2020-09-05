@@ -2,19 +2,35 @@ import os
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 import warnings
+from typing import Dict, List, Union, Callable, Optional
 
 warnings.filterwarnings('ignore')
 
 scaler = StandardScaler()
 
-def get_submodule(sub_post_processor):
+
+def get_module(module: Optional[list]):
     import importlib
-    module_name = sub_post_processor[0]
-    module = importlib.import_module(module_name)
-    # 递归导入
-    for j in range(1, len(sub_post_processor)):
-        module = module.__dict__[sub_post_processor[j]]
-    return module
+    if module is not None:
+        module_name = module[0]
+        module_ = importlib.import_module(module_name)
+        # 递归导入
+        for j in range(1, len(module)):
+            module_ = module_.__dict__[module[j]]
+    else:
+        module_ = lambda x: x
+    return module_
+
+
+def get_modules(modules, index: Optional[int] = None):
+    res_module = []
+    if index is None:
+        for module in modules:
+            res_module.append(get_module(module))
+    else:
+        res_module = get_module(modules[index])
+    return res_module
+
 
 def log2plus1R(x):
     x = np.sign(x) * np.log2(np.abs(x + np.sign(x)))
@@ -76,7 +92,7 @@ def find_model(id, useVersion="final", main_path="./", timestamp=None):
         file_ele = file.split("-")
         ID = file_ele[-1]
         if id == ID:
-            if timestamp is None or timestamp=="":
+            if timestamp is None or timestamp == "":
                 folder_name = file
             elif file_ele[-2] == timestamp:
                 folder_name = file
@@ -104,6 +120,7 @@ def find_model(id, useVersion="final", main_path="./", timestamp=None):
         model_path = os.path.join(main_path, 'wandb', folder_name, 'checkpoints', useVersion)
         max_file_name = useVersion
     return folder_name, model_path, max_file_name
+
 
 def LoadCustomPolicyForTest(model_path):
     from stable_baselines import TRPO

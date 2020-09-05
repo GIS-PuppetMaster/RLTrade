@@ -10,8 +10,8 @@
     "save_code": false
   },
   "env": {
-    "train_env_num": 8,
-    "test_env_num": 2,
+    "train_env_num": 1,
+    "test_env_num": 1,
     "wait_num": null,
     "time_out": null,
     "train": {
@@ -20,6 +20,7 @@
       "episode_len": 250,
       "obs_time_size": 60,
       "sim_delta_time": 1,
+      "select_num": 20,
       "stock_codes": [
         "000001.XSHE",
         "000002.XSHE",
@@ -203,7 +204,7 @@
         "601998.XSHG"
       ],
       "result_path": "E:/运行结果/TD3/train/",
-      "principal": 1e7,
+      "principal": 1e6,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
@@ -233,6 +234,7 @@
       "episode_len": 250,
       "obs_time_size": 60,
       "sim_delta_time": 1,
+      "select_num": 20,
       "stock_codes": [
         "000001.XSHE",
         "000002.XSHE",
@@ -415,8 +417,8 @@
         "601989.XSHG",
         "601998.XSHG"
       ],
-      "result_path": "E:/运行结果/TD3/testEnv/",
-      "principal": 1e7,
+      "result_path": "E:/运行结果/TD3/test/",
+      "principal": 1e6,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
@@ -442,23 +444,58 @@
     }
   },
   "policy": {
-    "actor_lr": 1e-4,
-    "critic_1_lr": 1e-3,
-    "critic_2_lr": 1e-3,
+    "lr": 1e-4,
+    "actor": {
+      "forecast_length": 2,
+      "stack_types": [
+        "generic",
+        "generic",
+        "generic"
+      ],
+      "nb_blocks_per_stack": 2,
+      "thetas_dims": [
+        4,
+        4,
+        4
+      ],
+      "share_weights_in_stack": false,
+      "hidden_layer_units": 64,
+      "feature_extract": "nbeats"
+    },
+    "critic": {
+      "forecast_length": 2,
+      "stack_types": [
+        "generic",
+        "generic",
+        "generic"
+      ],
+      "nb_blocks_per_stack": 2,
+      "thetas_dims": [
+        4,
+        4,
+        4
+      ],
+      "share_weights_in_stack": false,
+      "hidden_layer_units": 64,
+      "feature_extract": "nbeats",
+      "with_action": false
+    },
     "policy_parameter": {
-      "tau": 0.005,
-      "gamma": 0.99,
-      "policy_noise": 0.2,
-      "update_actor_freq": 2,
-      "noise_clip": 0.5,
-      "reward_normalization": false,
-      "ignore_done": false,
-      "estimation_step": 5
+      "dist_fn": [
+        "torch.distributions.normal",
+        "Normal"
+      ],
+      "discount_factor": 0.99,
+      "vf_coef": 0.5,
+      "ent_coef": 0.01,
+      "max_grad_norm": null,
+      "gae_lambda": 0.95,
+      "reward_normalization": false
     }
   },
   "train": {
     "replay_buffer": {
-      "size": 100000,
+      "size": 1000000,
       "alpha": 0.6,
       "beta": 0.4
     },
@@ -466,15 +503,15 @@
       "max_epoch": 1000,
       "step_per_epoch": 1,
       "collect_per_step": 1000,
-      "episode_per_test": 2,
-      "batch_size": 64,
-      "update_per_step": 1,
+      "repeat_per_collect": 2,
+      "episode_per_test": 1,
+      "batch_size": 16,
       "log_interval": 1,
       "verbose": true,
       "test_in_train": true
     },
     "log_dir": "../TensorboardLog/",
-    "save_dir":"../TensorboardLog/policy.pth",
+    "save_dir": "../TensorboardLog/policy.pth",
     "gpu": true
   }
 }

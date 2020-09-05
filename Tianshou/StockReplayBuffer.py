@@ -6,7 +6,7 @@ from tianshou.data import Batch, SegmentTree, to_numpy
 from collections import OrderedDict
 import pandas as pd
 import os
-from Util.Util import get_submodule
+from Util.Util import get_modules
 import dill
 
 def read_stock_data(stock_codes, stock_data_path, data_type='day', load_from_cache=True, **kwargs):
@@ -81,7 +81,7 @@ class StockReplayBuffer(tianshou.data.ReplayBuffer):
         assert isinstance(stock_data, OrderedDict)
         self.date_list = list(stock_data.keys())
         self.value_list = list(stock_data.values())
-        self.post_processor = get_submodule(kwargs['post_processor'][0])
+        self.post_processor = get_modules(kwargs['post_processor'], 0)
 
     def add(self,
             obs: dict,

@@ -20,7 +20,7 @@
       "episode_len": 250,
       "obs_time_size": 60,
       "sim_delta_time": 1,
-      "select_num": 20 ,
+      "select_num": 20,
       "stock_codes": [
         "000001.XSHE",
         "000002.XSHE",
@@ -209,10 +209,7 @@
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
-        [
-          "Util.Util",
-          "post_processor"
-        ],
+        null,
         [
           "Util.Util",
           "log10plus1R"
@@ -237,7 +234,7 @@
       "episode_len": 250,
       "obs_time_size": 60,
       "sim_delta_time": 1,
-      "select_num": 20 ,
+      "select_num": 20,
       "stock_codes": [
         "000001.XSHE",
         "000002.XSHE",
@@ -426,10 +423,7 @@
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
-        [
-          "Util.Util",
-          "post_processor"
-        ],
+        null,
         [
           "Util.Util",
           "log10plus1R"
@@ -458,14 +452,15 @@
         "generic",
         "generic"
       ],
-      "nb_blocks_pre_stack": 2,
+      "nb_blocks_per_stack": 2,
       "thetas_dims": [
         4,
         4,
         4
       ],
-      "shard_weights_in_stack": false,
-      "hidden_layer_units": 64
+      "share_weights_in_stack": false,
+      "hidden_layer_units": 64,
+      "feature_extract": "nbeats"
     },
     "critic_1": {
       "lr": 1e-3,
@@ -475,14 +470,16 @@
         "generic",
         "generic"
       ],
-      "nb_blocks_pre_stack": 2,
+      "nb_blocks_per_stack": 2,
       "thetas_dims": [
         4,
         4,
         4
       ],
-      "shard_weights_in_stack": false,
-      "hidden_layer_units": 64
+      "share_weights_in_stack": false,
+      "hidden_layer_units": 64,
+      "feature_extract": "nbeats",
+      "with_action": true
     },
     "critic_2": {
       "lr": 1e-3,
@@ -492,14 +489,16 @@
         "generic",
         "generic"
       ],
-      "nb_blocks_pre_stack": 2,
+      "nb_blocks_per_stack": 2,
       "thetas_dims": [
         4,
         4,
         4
       ],
-      "shard_weights_in_stack": false,
-      "hidden_layer_units": 64
+      "share_weights_in_stack": false,
+      "hidden_layer_units": 64,
+      "feature_extract": "nbeats",
+      "with_action": true
     },
     "policy_parameter": {
       "tau": 0.005,
@@ -519,12 +518,12 @@
       "beta": 0.4
     },
     "train_parameter": {
-      "max_epoch": 1000,
+      "max_epoch": 10000,
       "step_per_epoch": 1,
       "collect_per_step": 1000,
       "episode_per_test": 1,
       "batch_size": 64,
-      "update_per_step": 50,
+      "update_per_step": 16,
       "log_interval": 1,
       "verbose": true,
       "test_in_train": true

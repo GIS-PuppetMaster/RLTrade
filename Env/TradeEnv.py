@@ -67,7 +67,7 @@ class TradeEnv(gym.Env):
         self.feature_num = feature_num
         self.noise_rate = noise_rate
         self.obs_time = obs_time_size
-        self.post_processor = [get_submodule(submodule) for submodule in post_processor]
+        self.post_processor = get_modules(post_processor)
         self.agent_state = agent_state
         self.load_from_cache = load_from_cache
         self.test_mode = test_mode
@@ -77,7 +77,8 @@ class TradeEnv(gym.Env):
         # time_list只包含交易环境可用的有效日期
         self.time_list = self.raw_time_list[self.obs_time:]
         self.action_space = spaces.Box(low=np.array([0 for _ in range(len(self.stock_codes))] + [0, ]),
-                                       high=np.array([20 for _ in range(len(self.stock_codes))] + [20, ]))
+                                       high=np.array(
+                                           [float('inf') for _ in range(len(self.stock_codes))] + [float('inf'), ]))
         obs_low = np.full((self.obs_time, len(self.stock_codes), self.feature_num), float('-inf'))
         obs_high = np.full((self.obs_time, len(self.stock_codes), self.feature_num), float('inf'))
         if agent_state:
@@ -142,7 +143,8 @@ class TradeEnv(gym.Env):
         # 停牌股票股价为nan
         nan_mask = np.isnan(price)
         # 减去Tianshou加上的action_bias
-        action = np.squeeze(action).astype(np.float64) - 10
+        # action = np.squeeze(action).astype(np.float64) - 10
+        action = np.squeeze(action).astype(np.float64)
         # 遮盖停牌股票交易指令
         action_masked = action[:-1].copy()
         action_masked[nan_mask] = 0.
@@ -223,9 +225,9 @@ class TradeEnv(gym.Env):
         # 先添加到历史中，reward为空
         action[:-1] = action_masked
         # 计算累计回报率
-        cum_return_profit_ratio = (self.money +self.stock_value.sum()) / self.principal - 1
+        cum_return_profit_ratio = (self.money + self.stock_value.sum()) / self.principal - 1
         # 计算每天股价变化率
-        price_change_rate = price.mean()/self.trade_history[-1][1].mean() - 1 if len(self.trade_history) >0 else 0.
+        price_change_rate = price.mean() / self.trade_history[-1][1].mean() - 1 if len(self.trade_history) > 0 else 0.
         his_log = [trade_time, price.copy(), quant.copy(), self.stock_amount.copy(), self.money, None, action,
                    self.stock_value.copy(), self.buy_value.copy(), self.sold_value.copy(), profit_ratio,
                    cum_return_profit_ratio, price_change_rate]
@@ -281,7 +283,7 @@ class TradeEnv(gym.Env):
                 filtered_his_reward = his_reward[~nan_mask]
                 reward = filtered_his_reward[-1] if filtered_his_reward.shape[0] > 0 else 0
         else:
-            reward = 0
+            reward = 0.
         return reward
 
     def set_next_day(self):
