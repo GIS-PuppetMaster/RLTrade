@@ -209,7 +209,10 @@
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
-        null,
+        [
+          "Util.Util",
+          "log10plus1R"
+        ],
         [
           "Util.Util",
           "log10plus1R"
@@ -225,7 +228,7 @@
       "feature_num": 32,
       "noise_rate": 0,
       "load_from_cache": true,
-      "wandb_log": true,
+      "wandb_log": false,
       "env_type": "train"
     },
     "test": {
@@ -423,7 +426,10 @@
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
-        null,
+        [
+          "Util.Util",
+          "log10plus1R"
+        ],
         [
           "Util.Util",
           "log10plus1R"
@@ -488,9 +494,9 @@
       "discount_factor": 0.99,
       "vf_coef": 0.5,
       "ent_coef": 0.01,
-      "max_grad_norm": null,
+      "max_grad_norm": true,
       "gae_lambda": 0.95,
-      "reward_normalization": false
+      "reward_normalization": true
     }
   },
   "train": {

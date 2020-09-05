@@ -161,6 +161,8 @@ class TradeEnv(gym.Env):
         normed_sub_action = sub_action - sub_action.max()
         exp_normed_sub_action = np.exp(normed_sub_action)
         action_masked[trade_mask] = exp_normed_sub_action / exp_normed_sub_action.sum()
+        # action_masked = np.clip(action_masked, a_min=0, a_max=float('inf'))
+        # action_masked /= action_masked.sum()
         self.step_ += 1
         if self.step_ >= self.episode_len or self.index >= len(self.time_list):
             self.done = True

@@ -42,7 +42,7 @@ class StockActor(nn.Module):
         self.body = nn.Sequential(
             nn.Linear(in_features=body_input_size, out_features=action_shape[0]),
             nn.BatchNorm1d(action_shape[0]),
-            nn.Tanh(),
+            nn.ReLU(),
         )
         self.output1 = nn.Sequential(
             nn.Linear(in_features=action_shape[0], out_features=action_shape[0]),
@@ -159,10 +159,10 @@ class StockCritic(nn.Module):
         self.output = nn.Sequential(
             nn.Linear(in_features=body_input_size, out_features=256),
             nn.BatchNorm1d(256),
-            nn.Tanh(),
+            nn.PReLU(),
             nn.Linear(in_features=256, out_features=256),
             nn.BatchNorm1d(256),
-            nn.Tanh(),
+            nn.PReLU(),
             nn.Linear(in_features=256, out_features=1),
         )
 
