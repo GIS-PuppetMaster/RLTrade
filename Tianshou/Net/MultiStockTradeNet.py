@@ -47,9 +47,9 @@ class StockActor(nn.Module):
         self.output1 = nn.Sequential(
             nn.Linear(in_features=action_shape[0], out_features=action_shape[0]),
             nn.BatchNorm1d(action_shape[0]),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(in_features=action_shape[0], out_features=action_shape[0] - 1),
-            nn.ReLU()
+            nn.Tanh()
         )
         self.output2 = nn.Sequential(
             nn.Linear(in_features=action_shape[0], out_features=action_shape[0]),

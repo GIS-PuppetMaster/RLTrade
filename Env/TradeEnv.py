@@ -25,7 +25,7 @@ class TradeEnv(gym.Env):
                  post_processor=None, trade_time='open',
                  agent_state=True, data_type='day', feature_num=32, noise_rate=0., load_from_cache=True,
                  wandb_log=False,
-                 env_id=0, env_type='test', select_num=20, test_mode=False, **kwargs):
+                 env_id=0, env_type='test', select_num=20, action_bound=[0, 'inf'], **kwargs):
         """
                 :param start_episode: 起始episode
                 :param episode_len: episode长度
@@ -70,15 +70,15 @@ class TradeEnv(gym.Env):
         self.post_processor = get_modules(post_processor)
         self.agent_state = agent_state
         self.load_from_cache = load_from_cache
-        self.test_mode = test_mode
         # raw_time_list包含了原始数据中的所有日期
         self.stock_codes, self.stock_data, self.raw_time_list = self.read_stock_data(stock_codes,
                                                                                      load_from_cache)
         # time_list只包含交易环境可用的有效日期
         self.time_list = self.raw_time_list[self.obs_time:]
-        self.action_space = spaces.Box(low=np.array([0 for _ in range(len(self.stock_codes))] + [0, ]),
+        self.action_space = spaces.Box(low=np.array([action_bound[0] for _ in range(len(self.stock_codes))] + [0, ]),
                                        high=np.array(
-                                           [float('inf') for _ in range(len(self.stock_codes))] + [float('inf'), ]))
+                                           [float(action_bound[1]) for _ in range(len(self.stock_codes))] + [
+                                               float(action_bound[1]), ]))
         obs_low = np.full((self.obs_time, len(self.stock_codes), self.feature_num), float('-inf'))
         obs_high = np.full((self.obs_time, len(self.stock_codes), self.feature_num), float('inf'))
         if agent_state:
@@ -91,7 +91,7 @@ class TradeEnv(gym.Env):
                                                   'stock_position': spaces.Box(low=position_low, high=position_high),
                                                   'money': spaces.Box(low=money_low, high=money_high)})
         else:
-            self.observation_space = spaces.Dict({'stock_obs': spaces.Box(low=obs_low, high=obs_high)})
+            self.observation_space = spaces.Box(low=obs_low, high=obs_high)
         self.step_ = 0
         assert trade_time == "open" or trade_time == "close"
         self.trade_time = trade_time
@@ -100,8 +100,6 @@ class TradeEnv(gym.Env):
         self.wandb_log = wandb_log
         if wandb_log:
             if config['global_wandb']:
-                wandb.init(project=config['wandb']['project'], resume=kwargs['run_id'], reinit=True)
-            else:
                 wandb.init(project=config['wandb']['project'])
 
     def seed(self, seed=None):
@@ -148,8 +146,8 @@ class TradeEnv(gym.Env):
         # 遮盖停牌股票交易指令
         action_masked = action[:-1].copy()
         action_masked[nan_mask] = 0.
-        # 剪裁投入资金比例
-        action[-1] = np.clip(action[-1], a_min=0, a_max=1)
+        # 剪裁投入资金比例(sigmoid)
+        action[-1] = 1 / (1 + np.exp(action[-1]))
         # 最大的前20只股票权重保留，其余置0
         partition = np.argsort(action_masked)
         empty_mask = partition[:- self.select_num]
@@ -229,8 +227,9 @@ class TradeEnv(gym.Env):
         # 计算累计回报率
         cum_return_profit_ratio = (self.money + self.stock_value.sum()) / self.principal - 1
         # 计算每天股价变化率
-        price_change_rate = price.mean() / self.trade_history[-1][1].mean() - 1 if len(self.trade_history) > 0 else 0.
-        his_log = [trade_time, price.copy(), quant.copy(), self.stock_amount.copy(), self.money, None, action,
+        price_change_rate = price.mean() / np.nan_to_num(self.trade_history[-1][1]).mean() - 1 if len(
+            self.trade_history) > 0 else 0.
+        his_log = [trade_time, price, quant, self.stock_amount.copy(), self.money, None, action,
                    self.stock_value.copy(), self.buy_value.copy(), self.sold_value.copy(), profit_ratio,
                    cum_return_profit_ratio, price_change_rate]
         self.trade_history.append(his_log)
@@ -244,8 +243,7 @@ class TradeEnv(gym.Env):
                     obs_pass_date=self.raw_time_list[self.raw_time_list.index(trade_time) - self.obs_time],
                     obs_next_pass_date=self.raw_time_list[self.raw_time_list.index(self.current_time) - self.obs_time])
         obs = self.get_state()
-        if self.done and ((self.env_type == 'train' and self.episode % 5 == 0) or self.env_type == 'test') and (
-                self.episode % 20 == 0 or self.test_mode):
+        if self.done and ((self.env_type == 'train' and self.episode % 20 == 0) or self.env_type == 'test'):
             self.render('hybrid')
         return obs, reward, self.done, info
 
@@ -259,8 +257,8 @@ class TradeEnv(gym.Env):
             pass
             # state = np.random.multivariate_normal([0,0,0], [[state.std(axis=0)*self.noise_rate, 0],[0, state.std(axis=1)*self.noise_rate]]) + state
         # state = np.diff(state, axis=0, n=1) / state[1:, :]
-        obs = {'stock_obs': stock_obs}
         if self.agent_state:
+            obs = {'stock_obs': stock_obs}
             # 当前每只股票的每股成本
             stock_cost = np.expand_dims((self.buy_value - self.sold_value) / (100 * np.array(self.stock_amount)),
                                         axis=0)
@@ -271,19 +269,22 @@ class TradeEnv(gym.Env):
             obs['stock_position'] = stock_position
             money_obs = self.post_processor[2](np.array([self.money, ]))
             obs['money'] = money_obs
-        return obs
+            return obs
+        else:
+            return stock_obs
 
     def get_reward(self):
         if len(self.trade_history) >= 2:
-            noncum_return_profit_ratio = np.diff(np.array([i[11] for i in self.trade_history]), prepend=0)
-            minimum_acceptable_return = np.array([i[12] for i in self.trade_history])
-            reward = sortino_ratio(noncum_return_profit_ratio, minimum_acceptable_return)
-            if np.isnan(reward) or np.isinf(reward):
-                his_reward = np.array([i[5] for i in self.trade_history[:-1]])
-                his_reward = his_reward.astype(np.float32)
-                nan_mask = np.isnan(his_reward)
-                filtered_his_reward = his_reward[~nan_mask]
-                reward = filtered_his_reward[-1] if filtered_his_reward.shape[0] > 0 else 0
+            reward = self.trade_history[-1][11]
+            # noncum_return_profit_ratio = np.diff(np.array([i[11] for i in self.trade_history]), prepend=0)
+            # minimum_acceptable_return = np.array([i[12] for i in self.trade_history])
+            # reward = sortino_ratio(noncum_return_profit_ratio, minimum_acceptable_return)
+            # if np.isnan(reward) or np.isinf(reward):
+            #     his_reward = np.array([i[5] for i in self.trade_history[:-1]])
+            #     his_reward = his_reward.astype(np.float32)
+            #     nan_mask = np.isnan(his_reward)
+            #     filtered_his_reward = his_reward[~nan_mask]
+            #     reward = filtered_his_reward[-1] if filtered_his_reward.shape[0] > 0 else 0
         else:
             reward = 0.
         return reward
@@ -359,7 +360,7 @@ class TradeEnv(gym.Env):
     def render(self, mode='hybrid'):
         # if mode == "manual" or self.step_ >= self.episode_len or self.done:
         if self.done:
-            if mode == 'hybird' or (self.step_ != 0 and self.step_ % 20 == 0):
+            if mode == 'hybrid' or (self.step_ != 0 and self.step_ % 20 == 0):
                 return self.draw('hybrid')
             else:
                 return self.draw(mode)

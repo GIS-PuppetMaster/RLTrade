@@ -64,8 +64,7 @@ if __name__ == '__main__':
     policy = ts.policy.A2CPolicy(actor_net, critic_net, optim, **config['policy']['policy_parameter'])
     if not args.test:
         train_collector = ts.data.Collector(policy, train_envs,
-                                            StockPrioritizedReplayBuffer(**config['train']['replay_buffer'],
-                                                                         **config['env']['train']))
+                                            ts.data.PrioritizedReplayBuffer(**config['train']['replay_buffer']))
     else:
         policy.load_state_dict(torch.load(save_dir))
 

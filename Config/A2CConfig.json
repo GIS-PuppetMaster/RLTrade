@@ -203,7 +203,7 @@
         "601989.XSHG",
         "601998.XSHG"
       ],
-      "result_path": "E:/运行结果/TD3/train/",
+      "result_path": "E:/运行结果/A2C/train/",
       "principal": 1e6,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
@@ -420,7 +420,7 @@
         "601989.XSHG",
         "601998.XSHG"
       ],
-      "result_path": "E:/运行结果/TD3/test/",
+      "result_path": "E:/运行结果/A2C/test/",
       "principal": 1e6,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
@@ -494,14 +494,14 @@
       "discount_factor": 0.99,
       "vf_coef": 0.5,
       "ent_coef": 0.01,
-      "max_grad_norm": true,
+      "max_grad_norm": null,
       "gae_lambda": 0.95,
       "reward_normalization": true
     }
   },
   "train": {
     "replay_buffer": {
-      "size": 1000000,
+      "size": 1100,
       "alpha": 0.6,
       "beta": 0.4
     },

@@ -42,7 +42,7 @@ train_env_config = dict(obs_time_size='60 day', obs_delta_frequency='1 day', sim
                                      '000001_XSHE'],
                         result_path="E:/运行结果/TRPO/" + net_type + "/train/",
                         stock_data_path='./Data/train/',
-                        poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor, principal=1e6,
+                        poundage_rate=1.5e-3, reward_verbose=1, post_processor=norm_processor, principal=1e6,
                         mode='train', agent_state=agent_state)
 eval_env_config = dict(obs_time_size='60 day', obs_delta_frequency='1 day', sim_delta_time='1 day',
                        start_episode=0, episode_len=250,
@@ -50,10 +50,10 @@ eval_env_config = dict(obs_time_size='60 day', obs_delta_frequency='1 day', sim_
                                     '000001_XSHE'],
                        result_path="E:/运行结果/TRPO/" + net_type + "/" + 'eval' + "/",
                        stock_data_path='./Data/test/',
-                       poundage_rate=1.5e-3, reward_verbose=1, post_processor=post_processor, principal=1e6,
+                       poundage_rate=1.5e-3, reward_verbose=1, post_processor=norm_processor, principal=1e6,
                        mode='eval', agent_state=agent_state, end_index_bound=-250)
-train_env_config_ = deepcopy(train_env_config)["post_processor"] = post_processor.__name__
-eval_env_config_ = deepcopy(eval_env_config)["post_processor"] = post_processor.__name__
+train_env_config_ = deepcopy(train_env_config)["post_processor"] = norm_processor.__name__
+eval_env_config_ = deepcopy(eval_env_config)["post_processor"] = norm_processor.__name__
 
 config = dict(train_env_config=train_env_config_, eval_env_config=eval_env_config_, agent_config=agent_config)
 

@@ -49,11 +49,11 @@ def init(context):
     conf['train_env_config'] = conf['train_env_config']['value']
     conf['eval_env_config'] = conf['eval_env_config']['value']
     if conf['train_env_config']['post_processor'] == 'post_processor':
-        conf['train_env_config']['post_processor'] = post_processor
+        conf['train_env_config']['post_processor'] = norm_processor
     else:
         raise Exception("train_env_config:post_processor为不支持的类型{}".format(conf['train_env_config']['post_processor']))
     if conf['eval_env_config']['post_processor'] == 'post_processor':
-        conf['eval_env_config']['post_processor'] = post_processor
+        conf['eval_env_config']['post_processor'] = norm_processor
     else:
         raise Exception("eval_env_config:post_processor为不支持的类型{}".format(conf['eval_env_config']['post_processor']))
     globals().update(conf)

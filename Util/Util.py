@@ -46,8 +46,13 @@ def log10plus1R(x):
     return x
 
 
-def post_processor(state):
+def norm_processor(state):
     return scaler.fit_transform(state)
+
+
+def selectivelog10plus1R(x):
+    x[x > 100] = log10plus1R(x[x > 100])
+    return x
 
 
 def del_file(path_data):

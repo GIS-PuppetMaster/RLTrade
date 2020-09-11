@@ -1,5 +1,6 @@
 {
   "global_wandb": true,
+  "seed": 0,
   "wandb": {
     "project": "Tianshou-Trader",
     "sync_tensorboard": true,
@@ -10,7 +11,7 @@
     "save_code": false
   },
   "env": {
-    "train_env_num": 32,
+    "train_env_num": 1,
     "test_env_num": 1,
     "wait_num": null,
     "time_out": null,
@@ -203,16 +204,13 @@
         "601989.XSHG",
         "601998.XSHG"
       ],
-      "result_path": "../PlotOutput/TD3/train/",
+      "result_path": "E:/运行结果/TD3/train/",
       "principal": 1e6,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
-        [
-          "Util.Util",
-          "selectivelog10plus1R"
-        ],
+        null,
         [
           "Util.Util",
           "log10plus1R"
@@ -223,14 +221,14 @@
         ]
       ],
       "trade_time": "open",
-      "agent_state": true,
+      "agent_state": false,
       "data_type": "day",
       "feature_num": 32,
       "noise_rate": 0,
       "load_from_cache": true,
-      "wandb_log": false,
+      "wandb_log": true,
       "env_type": "train",
-      "action_bound":[-1, 1]
+      "action_bound": [-1,1]
     },
     "test": {
       "stock_data_path": "../Data/test/",
@@ -421,16 +419,13 @@
         "601989.XSHG",
         "601998.XSHG"
       ],
-      "result_path": "../PlotOutput/TD3/test/",
+      "result_path": "E:/运行结果/TD3/test/",
       "principal": 1e6,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
-        [
-          "Util.Util",
-          "selectivelog10plus1R"
-        ],
+        null,
         [
           "Util.Util",
           "log10plus1R"
@@ -441,103 +436,27 @@
         ]
       ],
       "trade_time": "open",
-      "agent_state": true,
+      "agent_state": false,
       "data_type": "day",
       "feature_num": 32,
       "noise_rate": 0,
       "load_from_cache": true,
       "wandb_log": false,
       "env_type": "test",
-      "action_bound":[-1, 1]
+      "action_bound": [-1,1]
     }
   },
   "policy": {
-    "actor": {
-      "lr": 1e-4,
-      "forecast_length": 2,
-      "stack_types": [
-        "generic",
-        "generic",
-        "generic"
-      ],
-      "nb_blocks_per_stack": 2,
-      "thetas_dims": [
-        4,
-        4,
-        4
-      ],
-      "share_weights_in_stack": false,
-      "hidden_layer_units": 64,
-      "feature_extract": "nbeats"
-    },
-    "critic_1": {
-      "lr": 1e-3,
-      "forecast_length": 2,
-      "stack_types": [
-        "generic",
-        "generic",
-        "generic"
-      ],
-      "nb_blocks_per_stack": 2,
-      "thetas_dims": [
-        4,
-        4,
-        4
-      ],
-      "share_weights_in_stack": false,
-      "hidden_layer_units": 64,
-      "feature_extract": "nbeats",
-      "with_action": true
-    },
-    "critic_2": {
-      "lr": 1e-3,
-      "forecast_length": 2,
-      "stack_types": [
-        "generic",
-        "generic",
-        "generic"
-      ],
-      "nb_blocks_per_stack": 2,
-      "thetas_dims": [
-        4,
-        4,
-        4
-      ],
-      "share_weights_in_stack": false,
-      "hidden_layer_units": 64,
-      "feature_extract": "nbeats",
-      "with_action": true
-    },
-    "policy_parameter": {
-      "tau": 0.005,
-      "gamma": 0.99,
-      "policy_noise": 0.2,
-      "update_actor_freq": 2,
-      "noise_clip": 0.5,
-      "reward_normalization": false,
-      "ignore_done": false,
-      "estimation_step": 5
-    }
   },
   "train": {
-    "replay_buffer": {
-      "size": 10000000,
-      "alpha": 0.6,
-      "beta": 0.4
-    },
-    "train_parameter": {
-      "max_epoch": 10000,
-      "step_per_epoch": 1,
-      "collect_per_step": 1000,
-      "episode_per_test": 1,
-      "batch_size": 64,
-      "update_per_step": 2,
-      "log_interval": 1,
-      "verbose": true,
-      "test_in_train": true
-    },
+    "total_timesteps": 2500000,
     "log_dir": "../TensorboardLog/",
-    "save_dir": "../TensorboardLog/policy.pth",
-    "gpu": true
+    "save_dir": "../checkpoints",
+    "gpu": "0",
+    "save_freq": 12500
+  },
+  "eval": {
+    "n_eval_episodes": 1,
+    "eval_freq": 12500
   }
 }

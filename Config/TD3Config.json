@@ -209,7 +209,10 @@
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
-        null,
+        [
+          "Util.Util",
+          "selectivelog10plus1R"
+        ],
         [
           "Util.Util",
           "log10plus1R"
@@ -225,8 +228,9 @@
       "feature_num": 32,
       "noise_rate": 0,
       "load_from_cache": true,
-      "wandb_log": true,
-      "env_type": "train"
+      "wandb_log": false,
+      "env_type": "train",
+      "action_bound":[-1, 1]
     },
     "test": {
       "stock_data_path": "../Data/test/",
@@ -423,7 +427,10 @@
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
-        null,
+        [
+          "Util.Util",
+          "selectivelog10plus1R"
+        ],
         [
           "Util.Util",
           "log10plus1R"
@@ -440,7 +447,8 @@
       "noise_rate": 0,
       "load_from_cache": true,
       "wandb_log": false,
-      "env_type": "test"
+      "env_type": "test",
+      "action_bound":[-1, 1]
     }
   },
   "policy": {

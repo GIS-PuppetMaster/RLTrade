@@ -71,7 +71,7 @@ def read_stock_data(stock_codes, stock_data_path, data_type='day', load_from_cac
 
 class StockReplayBuffer(tianshou.data.ReplayBuffer):
     def __init__(self, size: int, **kwargs):
-        super().__init__(size, **kwargs)
+        super().__init__(size)
         assert 'stock_codes' in kwargs.keys()
         assert 'stock_data_path' in kwargs.keys()
         assert 'data_type' in kwargs.keys()
