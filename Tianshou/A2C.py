@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
     if not args.test:
         writer = SummaryWriter(config['train']['log_dir'])
-        result = onpolicy_trainer(policy, train_collector, test_collector,
+        result = ts.trainer.onpolicy_trainer(policy, train_collector, test_collector,
                                               **config['train']['train_parameter'],
                                               writer=writer,
                                               save_fn=lambda p: torch.save(p.state_dict(), save_dir))

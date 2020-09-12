@@ -3,11 +3,13 @@ import torch
 from typing import Union, Optional, Tuple, Any
 import numpy as np
 from tianshou.data import Batch, SegmentTree, to_numpy
+from tianshou.data import PrioritizedReplayBuffer
 from collections import OrderedDict
 import pandas as pd
 import os
 from Util.Util import get_modules
 import dill
+
 
 def read_stock_data(stock_codes, stock_data_path, data_type='day', load_from_cache=True, **kwargs):
     # in order by stock_code
@@ -84,12 +86,12 @@ class StockReplayBuffer(tianshou.data.ReplayBuffer):
         self.post_processor = get_modules(kwargs['post_processor'], 0)
 
     def add(self,
-            obs: dict,
-            act: Union[np.ndarray, float],
+            obs: Union[dict, Batch, np.ndarray, float],
+            act: Union[dict, Batch, np.ndarray, float],
             rew: Union[int, float],
-            done: bool,
-            obs_next: Optional[dict] = None,
-            info: dict = {},
+            done: Union[bool, int],
+            obs_next: Optional[Union[dict, Batch, np.ndarray, float]] = None,
+            info: Optional[Union[dict, Batch]] = {},
             policy: Optional[Union[dict, Batch]] = {},
             **kwargs) -> None:
         obs, obs_next = self._convert_obs(obs, obs_next, info)
@@ -146,7 +148,7 @@ class StockReplayBuffer(tianshou.data.ReplayBuffer):
         )
 
 
-class StockPrioritizedReplayBuffer(StockReplayBuffer):
+class StockPrioritizedReplayBuffer(PrioritizedReplayBuffer, StockReplayBuffer):
     """Implementation of Prioritized Experience Replay. arXiv:1511.05952
 
     :param float alpha: the prioritization exponent.
@@ -159,30 +161,18 @@ class StockPrioritizedReplayBuffer(StockReplayBuffer):
     """
 
     def __init__(self, size: int, alpha: float, beta: float, **kwargs) -> None:
-        super().__init__(size, **kwargs)
-        assert alpha > 0. and beta >= 0.
-        self._alpha, self._beta = alpha, beta
-        self._max_prio = 1.
-        self._min_prio = 1.
-        # bypass the check
-        self._weight = SegmentTree(size)
-        self.__eps = np.finfo(np.float32).eps.item()
-
-    def __getattr__(self, key: str) -> Union['Batch', Any]:
-        """Return self.key"""
-        if key == 'weight':
-            return self._weight
-        return super().__getattr__(key)
+        StockReplayBuffer(size, **kwargs).__init__(size, **kwargs)
+        super().__init__(size, alpha, beta, **kwargs)
 
     def add(self,
-            obs: Union[dict, np.ndarray],
-            act: Union[np.ndarray, float],
+            obs: Union[dict, Batch, np.ndarray, float],
+            act: Union[dict, Batch, np.ndarray, float],
             rew: Union[int, float],
-            done: bool,
-            obs_next: Optional[Union[dict, np.ndarray]] = None,
-            info: dict = {},
+            done: Union[bool, int],
+            obs_next: Optional[Union[dict, Batch, np.ndarray, float]] = None,
+            info: Optional[Union[dict, Batch]] = {},
             policy: Optional[Union[dict, Batch]] = {},
-            weight: float = None,
+            weight: Optional[float] = None,
             **kwargs) -> None:
         """Add a batch of data into replay buffer."""
         if weight is None:
@@ -192,47 +182,10 @@ class StockPrioritizedReplayBuffer(StockReplayBuffer):
             self._max_prio = max(self._max_prio, weight)
             self._min_prio = min(self._min_prio, weight)
         self.weight[self._index] = weight ** self._alpha
-        super().add(obs, act, rew, done, obs_next, info, policy)
+        super(PrioritizedReplayBuffer, self).add(obs, act, rew, done, obs_next, info, policy)
 
-    def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
-        """Get a random sample from buffer with priority probability. Return
-        all the data in the buffer if batch_size is ``0``.
-
-        :return: Sample data and its corresponding index inside the buffer.
-
-        The ``weight`` in the returned Batch is the weight on loss function
-        to de-bias the sampling process (some transition tuples are sampled
-        more often so their losses are weighted less).
-        """
-        assert self._size > 0, 'Cannot sample a buffer with 0 size!'
-        if batch_size == 0:
-            indice = np.concatenate([
-                np.arange(self._index, self._size),
-                np.arange(0, self._index),
-            ])
-        else:
-            scalar = np.random.rand(batch_size) * self.weight.reduce()
-            indice = self.weight.get_prefix_sum_idx(scalar)
-        batch = self[indice]
-        # impt_weight
-        # original formula: ((p_j/p_sum*N)**(-beta))/((p_min/p_sum*N)**(-beta))
-        # simplified formula: (p_j/p_min)**(-beta)
-        batch.weight = (batch.weight / self._min_prio) ** (-self._beta)
-        return batch, indice
-
-    def update_weight(self, indice: Union[np.ndarray],
-                      new_weight: Union[np.ndarray, torch.Tensor]) -> None:
-        """Update priority weight by indice in this buffer.
-
-        :param np.ndarray indice: indice you want to update weight.
-        :param np.ndarray new_weight: new priority weight you want to update.
-        """
-        weight = np.abs(to_numpy(new_weight)) + self.__eps
-        self.weight[indice] = weight ** self._alpha
-        self._max_prio = max(self._max_prio, weight.max())
-        self._min_prio = min(self._min_prio, weight.min())
-
-    def __getitem__(self, index: np.ndarray) -> Batch:
+    def __getitem__(self, index: Union[
+        slice, int, np.integer, np.ndarray]) -> Batch:
         obs, obs_next = super()._fetch_obs(index)
         return Batch(
             obs=obs,
