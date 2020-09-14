@@ -227,7 +227,8 @@ class TradeEnv(gym.Env):
         # 计算累计回报率
         cum_return_profit_ratio = (self.money + self.stock_value.sum()) / self.principal - 1
         # 计算每天股价变化率
-        price_change_rate = price.mean() / np.nan_to_num(self.trade_history[-1][1]).mean() - 1 if len(
+        price_change_rate = price.mean() / np.nan_to_num(self.trade_history[-1][1], nan=0., posinf=0.,
+                                                         neginf=0.).mean() - 1 if len(
             self.trade_history) > 0 else 0.
         his_log = [trade_time, price, quant, self.stock_amount.copy(), self.money, None, action,
                    self.stock_value.copy(), self.buy_value.copy(), self.sold_value.copy(), profit_ratio,
@@ -251,7 +252,8 @@ class TradeEnv(gym.Env):
         time_index = self.raw_time_list.index(self.current_time)
         time_series = self.raw_time_list[time_index - self.obs_time - 1:time_index - 1]
         stock_obs = np.nan_to_num(
-            np.concatenate([np.expand_dims(self.stock_data[date], axis=0) for date in time_series], axis=0))
+            np.concatenate([np.expand_dims(self.stock_data[date], axis=0) for date in time_series], axis=0), nan=0.,
+            posinf=0., neginf=0.)
         stock_obs = self.post_processor[0](stock_obs.reshape(self.obs_time, -1)).reshape(stock_obs.shape)
         if self.noise_rate != 0.:
             pass
@@ -262,7 +264,7 @@ class TradeEnv(gym.Env):
             # 当前每只股票的每股成本
             stock_cost = np.expand_dims((self.buy_value - self.sold_value) / (100 * np.array(self.stock_amount)),
                                         axis=0)
-            stock_cost = np.nan_to_num(stock_cost)
+            stock_cost = np.nan_to_num(stock_cost, nan=0., posinf=0., neginf=0.)
             # shape = (2, num_stocks)
             stock_position = self.post_processor[1](
                 np.concatenate([np.expand_dims(self.stock_amount, axis=0), stock_cost], axis=0))
@@ -374,7 +376,7 @@ class TradeEnv(gym.Env):
         raw_price_array = pd.DataFrame(np.array([i[1] for i in self.trade_history]).astype(np.float32))
         raw_price_array.fillna(method='ffill', inplace=True)
         raw_price_array.fillna(method='bfill', inplace=True)
-        raw_price_array = np.nan_to_num(np.array(raw_price_array))
+        raw_price_array = np.nan_to_num(np.array(raw_price_array), nan=0., posinf=0., neginf=0.)
         raw_quant_array = np.array([i[2] for i in self.trade_history]).astype(np.float32)
         raw_amount_array = np.array([i[3] for i in self.trade_history]).astype(np.float32)
         raw_reward_array = np.array([i[5] for i in self.trade_history]).astype(np.float32)

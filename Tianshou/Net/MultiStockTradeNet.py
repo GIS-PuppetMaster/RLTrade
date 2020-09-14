@@ -110,15 +110,6 @@ class StockActor(nn.Module):
         logits = self.get_logits(hidden)
         return logits, state
 
-    def BN_train(self, mode):
-        for module in self.children():
-            if isinstance(module, nn.BatchNorm1d):
-                module.train(mode)
-            elif isinstance(module, nn.Sequential):
-                for layer in module:
-                    if isinstance(layer, nn.BatchNorm1d):
-                        layer.train(mode)
-
 
 class StockCritic(nn.Module):
     def __init__(self, state_space, action_shape, agent_state, gpu, feature_extract, with_action, **kwargs):
@@ -159,11 +150,12 @@ class StockCritic(nn.Module):
         self.output = nn.Sequential(
             nn.Linear(in_features=body_input_size, out_features=256),
             nn.BatchNorm1d(256),
-            nn.PReLU(),
+            nn.Tanh(),
             nn.Linear(in_features=256, out_features=256),
             nn.BatchNorm1d(256),
-            nn.PReLU(),
+            nn.Tanh(),
             nn.Linear(in_features=256, out_features=1),
+            nn.Tanh()
         )
 
     def pre_process(self, obs, action=None, state=None, info={}):
@@ -220,15 +212,6 @@ class StockCritic(nn.Module):
         hidden, action = self.get_hidden(obs, action, state, info)
         logits = self.get_logits(hidden, action)
         return logits
-
-    def BN_train(self, mode):
-        for module in self.children():
-            if isinstance(module, nn.BatchNorm1d):
-                module.train(mode)
-            elif isinstance(module, nn.Sequential):
-                for layer in module:
-                    if isinstance(layer, nn.BatchNorm1d):
-                        layer.train(mode)
 
 
 class StockDistributionalActor(StockActor):

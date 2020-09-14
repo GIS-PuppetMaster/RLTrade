@@ -1,5 +1,5 @@
 {
-  "global_wandb": false,
+  "global_wandb": true,
   "wandb": {
     "project": "Tianshou-Trader",
     "sync_tensorboard": true,
