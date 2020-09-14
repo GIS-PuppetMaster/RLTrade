@@ -43,4 +43,4 @@ while not done:
     obs, reward, done, _ = env.step(action)
     i += 1
 print(time()-t)
-env.render('native')
+env.render('hybrid')

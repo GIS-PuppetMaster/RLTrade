@@ -244,7 +244,8 @@ class TradeEnv(gym.Env):
                     obs_pass_date=self.raw_time_list[self.raw_time_list.index(trade_time) - self.obs_time],
                     obs_next_pass_date=self.raw_time_list[self.raw_time_list.index(self.current_time) - self.obs_time])
         obs = self.get_state()
-        if self.done and ((self.env_type == 'train' and self.episode % 20 == 0) or self.env_type == 'test'):
+        if self.done and ((self.env_type == 'train' and self.episode % 20 == 0) or (
+                self.env_type == 'test' and self.episode % 10 == 0)):
             self.render('hybrid')
         return obs, reward, self.done, info
 
@@ -543,10 +544,16 @@ class TradeEnv(gym.Env):
             #                        showlegend=True), row=1, col=2, visible=True, xaxis='x2', yaxis='y3')
             fig.add_heatmap(
                 **dict(x=time_list, y=self.stock_codes,
-                       z=np.array([i[6] for i in self.trade_history])[:, :-1].T, colorscale='Viridis',
-                       name='仓位分配',
-                       showlegend=True, colorbar=dict(len=0.5, y=0.2), customdata=raw_amount_array.T,
-                       hovertemplate="x:%{x}\ny:%{y}\n手数:%{customdata}\n金额占比:%{z}<extra></extra>"),
+                       z=raw_amount_array.T, colorscale=[
+                        [0, 'rgb(53,50,155)'],
+                        [1 / 1000, 'rgb(126,77,143)'],
+                        [1 / 100, 'rgb(193,100,121)'],
+                        [1 / 10, 'rgb(246,139,69)'],
+                        [1, 'rgb(246,211,70)']],
+                       name='仓位',
+                       showlegend=True, colorbar=dict(len=0.5, y=0.2),
+                       customdata=np.array([i[6] for i in self.trade_history])[:, :-1].T,
+                       hovertemplate="x:%{x}\ny:%{y}\n金额占比:%{customdata}\n手数:%{z}<extra></extra>"),
                 row=2, col=2, visible=True, xaxis='x4', yaxis='y6')
             steps = []
             for i in range(0, len(self.stock_codes) * 5, 5):
