@@ -1,19 +1,27 @@
 import json
+import sys
+import wandb
+if sys.platform == 'win32':
+    sys.path.append("D:\\PycharmProjects\\Stable-BaselineTrading\\")
+else:
+    sys.path.append("/usr/zkx/Stable-BaselineTrading/")
 from stable_baselines import TRPO
 from stable_baselines.common.env_checker import check_env
 from Env.TradeEnv import TradeEnv
 from Util.Callback import CustomCallback
 from Util.BestModelCallback import *
 from stable_baselines.common.callbacks import *
+from stable_baselines.common.vec_env import *
 import shutil
 from Util.CustomPolicy import CustomMultiStockPolicy
 import argparse
 
 
-def make_env(config, seed, mode):
+def make_env(config, seed, mode, id):
     env_config = config['env'][mode]
+
     def get_env():
-        env = TradeEnv(config=config, **env_config)
+        env = TradeEnv(config=config, env_id=id, **env_config)
         env.seed(seed)
         check_env(env)
         return env
@@ -33,11 +41,9 @@ if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = conf['train']['gpu']
     eval_env = TradeEnv(config=conf, **conf['env']['test'])
     eval_env.seed(conf['seed'])
-    env = DummyVecEnv([make_env(conf, conf['seed'],'train') for _ in range(conf['env']['train_env_num'])])
+    env = DummyVecEnv([make_env(conf, conf['seed'], 'train', id) for id in range(conf['env']['train_env_num'])])
     monitorCallback = CustomCallback()
-    checkPointCallback = CheckpointCallback(save_freq=conf['train']['save_freq'], save_path=os.path.join(wandb.run.dir,
-                                                                                                conf['train'][
-                                                                                                    'save_dir']))
+    checkPointCallback = CheckpointCallback(save_freq=conf['train']['save_freq'], save_path=os.path.join(wandb.run.dir,conf['train']['save_dir']))
     saveBestCallback = MyEvalCallback(eval_env, best_model_save_path=wandb.run.dir, **conf['eval'])
     model = TRPO(CustomMultiStockPolicy, env, verbose=1, tensorboard_log=conf['train']['log_dir'], seed=conf['seed'])
     model.learn(total_timesteps=conf['train']['total_timesteps'], callback=[checkPointCallback, saveBestCallback])

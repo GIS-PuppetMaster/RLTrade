@@ -226,7 +226,7 @@
       "feature_num": 32,
       "noise_rate": 0,
       "load_from_cache": true,
-      "wandb_log": true,
+      "wandb_log": false,
       "env_type": "train",
       "action_bound": [-1,1]
     },

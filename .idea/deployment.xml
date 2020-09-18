@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="root@119.3.165.88:22 password" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="root@119.3.165.88:22 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/usr/zkx/Stable-BaselineTrading" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
+            <excludedPath local="true" path="$PROJECT_DIR$/ConfigSet" />
+            <excludedPath local="true" path="$PROJECT_DIR$/Data/raw" />
+            <excludedPath local="true" path="$PROJECT_DIR$/log" />
+            <excludedPath local="true" path="$PROJECT_DIR$/PlotOutput" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TensorboardLog" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TestResult" />
+            <excludedPath local="true" path="$PROJECT_DIR$/wandb" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+      <paths name="root@124.70.32.29:22 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/usr/zkx/Stable-BaselineTrading" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
+            <excludedPath local="true" path="$PROJECT_DIR$/ConfigSet" />
+            <excludedPath local="true" path="$PROJECT_DIR$/Data/raw" />
+            <excludedPath local="true" path="$PROJECT_DIR$/log" />
+            <excludedPath local="true" path="$PROJECT_DIR$/PlotOutput" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TensorboardLog" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TestResult" />
+            <excludedPath local="true" path="$PROJECT_DIR$/wandb" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+      <paths name="root@124.70.7.137:22 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/usr/zkx/Stable-BaselineTrading" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
+            <excludedPath local="true" path="$PROJECT_DIR$/ConfigSet" />
+            <excludedPath local="true" path="$PROJECT_DIR$/Data/raw" />
+            <excludedPath local="true" path="$PROJECT_DIR$/log" />
+            <excludedPath local="true" path="$PROJECT_DIR$/PlotOutput" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TensorboardLog" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TestResult" />
+            <excludedPath local="true" path="$PROJECT_DIR$/wandb" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+      <paths name="server1">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/Stable-BaselineTrading" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/wandb" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TensorboardLog" />
+            <excludedPath local="true" path="$PROJECT_DIR$/PreTrainedEncoder" />
+            <excludedPath local="true" path="$PROJECT_DIR$/ConfigSet" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TestResult" />
+            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
+            <excludedPath local="true" path="$PROJECT_DIR$/Data/raw" />
+            <excludedPath local="true" path="$PROJECT_DIR$/PlotOutput" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+      <paths name="server2">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/Stable-BaselineTrading" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/wandb" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TensorboardLog" />
+            <excludedPath local="true" path="$PROJECT_DIR$/PreTrainedEncoder" />
+            <excludedPath local="true" path="$PROJECT_DIR$/ConfigSet" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TestResult" />
+            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
+            <excludedPath local="true" path="$PROJECT_DIR$/Data/raw" />
+            <excludedPath local="true" path="$PROJECT_DIR$/PlotOutput" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+      <paths name="server3">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/Stable-BaselineTrading" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/wandb" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TensorboardLog" />
+            <excludedPath local="true" path="$PROJECT_DIR$/PreTrainedEncoder" />
+            <excludedPath local="true" path="$PROJECT_DIR$/ConfigSet" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TestResult" />
+            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
+            <excludedPath local="true" path="$PROJECT_DIR$/Data/raw" />
+            <excludedPath local="true" path="$PROJECT_DIR$/PlotOutput" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>

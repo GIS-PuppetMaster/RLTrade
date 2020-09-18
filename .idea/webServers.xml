@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="70224443-14bd-44f5-bcfd-2707058f1eef" name="server3">
+        <fileTransfer rootFolder="/usr/zkx" accessType="SFTP" host="119.3.165.88" port="22" sshConfigId="0c3dd092-2172-4368-b877-a958fa539132" sshConfig="root@119.3.165.88:22 password">
+          <advancedOptions>
+            <advancedOptions controlEncoding="UTF-8" dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+      <webServer id="d8df4350-8aad-4818-a576-aeb2a31790a5" name="server2">
+        <fileTransfer rootFolder="/usr/zkx" accessType="SFTP" host="124.70.32.29" port="22" sshConfigId="7f3dc937-81f5-4d4a-a2be-ce6cf48effcd" sshConfig="root@124.70.32.29:22 password">
+          <advancedOptions>
+            <advancedOptions controlEncoding="UTF-8" dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+      <webServer id="81dda514-bec5-4735-becb-cf15a647b510" name="server1">
+        <fileTransfer rootFolder="/usr/zkx" accessType="SFTP" host="124.70.7.137" port="22" sshConfigId="c9028993-a767-447c-8586-83b234dfc753" sshConfig="root@124.70.7.137:22 password">
+          <advancedOptions>
+            <advancedOptions controlEncoding="UTF-8" dataProtectionLevel="Private" muteSftpMessages="true" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

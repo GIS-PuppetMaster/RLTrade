@@ -526,7 +526,7 @@
       "beta": 0.4
     },
     "train_parameter": {
-      "max_epoch": 1000,
+      "max_epoch": 10000,
       "step_per_epoch": 1,
       "collect_per_step": 1000,
       "episode_per_test": 1,

@@ -1,6 +1,8 @@
 import sys
-
-sys.path.append("D:\\PycharmProjects\\Stable-BaselineTrading\\")
+if sys.platform == 'win32':
+    sys.path.append("D:\\PycharmProjects\\Stable-BaselineTrading\\")
+else:
+    sys.path.append("/usr/zkx/Stable-BaselineTrading/")
 import tianshou as ts
 from Env.TradeEnv import TradeEnv
 from Tianshou.Net.MultiStockTradeNet import *
@@ -20,6 +22,7 @@ if __name__ == '__main__':
     argparser.add_argument('--config', type=str)
     argparser.add_argument('--test', action='store_true', default=False)
     argparser.add_argument('--load_dir', type=str, default=None)
+    argparser.add_argument('--resume', type=str, default=None)
     args = argparser.parse_args()
 
     with open(args.config, 'r', encoding='utf-8') as f:
@@ -29,7 +32,10 @@ if __name__ == '__main__':
     run_id = None
     if config['global_wandb'] and not args.test:
         import wandb
-        wandb.init(**config['wandb'], config=config)
+        if args.resume is None:
+            wandb.init(**config['wandb'], config=config)
+        else:
+            wandb.init(**config['wandb'], config=config, resume=args.resume)
         if save_dir is None:
             save_dir = wandb.run.dir + "\\" + "policy.pth"
         run_id = wandb.run.id
@@ -71,8 +77,9 @@ if __name__ == '__main__':
         train_collector = ts.data.Collector(policy, train_envs,
                                             StockPrioritizedReplayBuffer(**config['train']['replay_buffer'],
                                                                          **config['env']['train']))
-    else:
+    elif args.test or args.resume is not None:
         policy.load_state_dict(torch.load(save_dir))
+        print('模型读取完毕')
 
     test_collector = ts.data.Collector(policy, test_envs)
 
