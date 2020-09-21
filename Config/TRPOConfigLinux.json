@@ -45,7 +45,7 @@
         "000708.XSHE",
         "000709.XSHE"
       ],
-      "result_path": "../PlotOutput/TRPO/",
+      "result_path": "../PlotOutput/TRPO/train/",
       "principal": 1e6,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
@@ -68,7 +68,7 @@
       "agent_state": false,
       "data_type": "day",
       "feature_num": 32,
-      "noise_rate": 0,
+      "noise_rate": 1,
       "load_from_cache": true,
       "wandb_log": false,
       "env_type": "train",
@@ -107,7 +107,7 @@
         "000708.XSHE",
         "000709.XSHE"
       ],
-      "result_path": "../PlotOutput/TRPO/",
+      "result_path": "../PlotOutput/TRPO/test/",
       "principal": 1e6,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
@@ -157,7 +157,7 @@
     "n_cpu_tf_sess": null
   },
   "train": {
-    "total_timesteps": 25000000,
+    "total_timesteps": 250000000,
     "log_dir": "../TensorboardLog/",
     "save_dir": "../checkpoints",
     "gpu": "0",

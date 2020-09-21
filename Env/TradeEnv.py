@@ -254,12 +254,10 @@ class TradeEnv(gym.Env):
         stock_obs = np.zeros(shape=(self.obs_time, len(self.stock_codes), self.feature_num))
         for idx, date in enumerate(time_series):
             stock_obs[idx, ...] = self.stock_data_without_nan[date]
+        if self.noise_rate != 0.:
+            stock_obs += np.squeeze(np.random.multivariate_normal([0], np.identity(1) * self.noise_rate, stock_obs.shape))
         if self.post_processor[0].__name__ in force_apply_in_step:
             stock_obs = self.post_processor[0](stock_obs)
-        if self.noise_rate != 0.:
-            pass
-            # state = np.random.multivariate_normal([0,0,0], [[state.std(axis=0)*self.noise_rate, 0],[0, state.std(axis=1)*self.noise_rate]]) + state
-        # state = np.diff(state, axis=0, n=1) / state[1:, :]
         if self.agent_state:
             obs = {'stock_obs': stock_obs}
             # 当前每只股票的每股成本
@@ -278,7 +276,12 @@ class TradeEnv(gym.Env):
 
     def get_reward(self):
         if len(self.trade_history) >= 2:
-            reward = self.trade_history[-1][11]
+            last = (self.trade_history[-2][11] + 1) * self.principal
+            now = (self.trade_history[-1][11] + 1) * self.principal
+            if last != 0:
+                reward = (now - last) / last * 100
+            else:
+                reward = 0.
             # noncum_return_profit_ratio = np.diff(np.array([i[11] for i in self.trade_history]), prepend=0)
             # minimum_acceptable_return = np.array([i[12] for i in self.trade_history])
             # reward = sortino_ratio(noncum_return_profit_ratio, minimum_acceptable_return)
