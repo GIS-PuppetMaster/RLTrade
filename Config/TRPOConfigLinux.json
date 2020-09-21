@@ -45,13 +45,16 @@
         "000708.XSHE",
         "000709.XSHE"
       ],
-      "result_path": "E:/运行结果/TD3/train/",
+      "result_path": "../PlotOutput/TRPO/",
       "principal": 1e6,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
-        null,
+        [
+          "Util.Util",
+          "diff_log10plus1R"
+        ],
         [
           "Util.Util",
           "log10plus1R"
@@ -104,13 +107,16 @@
         "000708.XSHE",
         "000709.XSHE"
       ],
-      "result_path": "E:/运行结果/TD3/test/",
+      "result_path": "../PlotOutput/TRPO/",
       "principal": 1e6,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
-        null,
+        [
+          "Util.Util",
+          "diff_log10plus1R"
+        ],
         [
           "Util.Util",
           "log10plus1R"
@@ -140,7 +146,7 @@
     "max_kl": 0.01,
     "cg_iters": 10,
     "lam": 0.98,
-    "entcoeff": 0.001,
+    "entcoeff": 1e-10,
     "cg_damping": 1e-2,
     "vf_stepsize": 3e-4,
     "vf_iters": 3,
@@ -148,7 +154,7 @@
     "_init_setup_model": true,
     "policy_kwargs": null,
     "full_tensorboard_log": false,
-    "n_cpu_tf_sess": 1
+    "n_cpu_tf_sess": null
   },
   "train": {
     "total_timesteps": 25000000,

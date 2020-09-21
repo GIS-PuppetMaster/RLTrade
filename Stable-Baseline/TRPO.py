@@ -36,7 +36,7 @@ if __name__ == '__main__':
     with open(args.config, 'r', encoding='utf-8') as f:
         conf = json.load(f)
     if conf['global_wandb']:
-        wandb.init(project='Stable-BaselineTradingV3', sync_tensorboard=True, config=conf)
+        wandb.init(project='Stable-BaselineTradingV3', sync_tensorboard=True, config=conf, tensorboard=True)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = conf['train']['gpu']
     eval_env = TradeEnv(config=conf, **conf['env']['test'])
@@ -45,6 +45,6 @@ if __name__ == '__main__':
     monitorCallback = CustomCallback()
     checkPointCallback = CheckpointCallback(save_freq=conf['train']['save_freq'], save_path=os.path.join(wandb.run.dir,conf['train']['save_dir']))
     saveBestCallback = MyEvalCallback(eval_env, best_model_save_path=wandb.run.dir, **conf['eval'])
-    model = TRPO(CustomMultiStockPolicy, env, verbose=1, tensorboard_log=conf['train']['log_dir'], seed=conf['seed'])
+    model = TRPO(CustomMultiStockPolicy, env, tensorboard_log=conf['train']['log_dir'], seed=conf['seed'], **conf['policy'])
     model.learn(total_timesteps=conf['train']['total_timesteps'], callback=[checkPointCallback, saveBestCallback])
     model.save(os.path.join(wandb.run.dir, 'final_model'))

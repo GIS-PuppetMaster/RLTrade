@@ -75,7 +75,7 @@ class MyEvalCallback(EventCallback):
                                                                render=self.render,
                                                                deterministic=self.deterministic,
                                                                return_episode_rewards=True)
-
+            self.eval_env.render('hybrid')
             if self.log_path is not None:
                 self.evaluations_timesteps.append(self.num_timesteps)
                 self.evaluations_results.append(episode_rewards)

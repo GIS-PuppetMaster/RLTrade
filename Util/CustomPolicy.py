@@ -4,13 +4,11 @@ from stable_baselines.common.policies import ActorCriticPolicy, register_policy,
     FeedForwardPolicy
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines import A2C
-from Config import seed
-
 
 class CustomPolicy(ActorCriticPolicy):
     def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse=False, **kwargs):
         super(CustomPolicy, self).__init__(sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse=reuse, scale=True)
-
+        seed = 0
         with tf.variable_scope("model", reuse=reuse):
             activ = tf.nn.relu
             net_arch = [dict(vf=[256, 128, 64, 32], pi=[256, 128, 64, 32])]
@@ -104,13 +102,11 @@ class CustomMultiStockPolicy(ActorCriticPolicy):
             time, stocks, feature = convert(time), convert(stocks), convert(feature)
             extracted_features = tf.reshape(extracted_features, shape=(-1, time, stocks * feature))
             extracted_features = tf.nn.leaky_relu(
-                tf.layers.conv1d(extracted_features, 32, 9, padding='same', dilation_rate=5))
-            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 32, 7, dilation_rate=3))
-            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 64, 5))
-            extracted_features = tf.layers.max_pooling1d(extracted_features, 2, 2)
-            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 128, 3, padding='same'))
-            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, stocks // 9, 3, padding='same'))
-            extracted_features = tf.layers.max_pooling1d(extracted_features, 2, 2)
+                tf.layers.conv1d(extracted_features, 32, 9, dilation_rate=1, kernel_regularizer=tf.contrib.layers.l1_regularizer(0.5)))
+            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 32, 7, dilation_rate=2, kernel_regularizer=tf.contrib.layers.l1_regularizer(0.1)))
+            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 64, 5, dilation_rate=4, kernel_regularizer=tf.contrib.layers.l1_regularizer(0.1)))
+            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 128, 3, dilation_rate=8, kernel_regularizer=tf.contrib.layers.l1_regularizer(0.1)))
+            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 256, 8, dilation_rate=1, kernel_regularizer=tf.contrib.layers.l1_regularizer(0.1)))
             extracted_features = tf.layers.flatten(extracted_features)
             pi_h = extracted_features
             for i, layer_size in enumerate([256, 128]):
@@ -120,7 +116,7 @@ class CustomMultiStockPolicy(ActorCriticPolicy):
             vf_h = extracted_features
             for i, layer_size in enumerate([256, 128]):
                 vf_h = tf.nn.tanh(tf.layers.dense(vf_h, layer_size, name='vf_fc' + str(i)))
-            value_fn = tf.layers.dense(vf_h, 1, name='vf')
+            value_fn = tf.nn.tanh(tf.layers.dense(vf_h, 1, name='vf_fc'+str(i+1)))
             vf_latent = vf_h
 
             self._proba_distribution, self._policy, self.q_value = \

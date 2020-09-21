@@ -11,6 +11,8 @@ import shutil
 import dill
 from collections import OrderedDict
 from empyrical import sortino_ratio
+import cupy as cp
+from copy import deepcopy
 
 """
 日间择时，开盘或收盘交易
@@ -71,8 +73,7 @@ class TradeEnv(gym.Env):
         self.agent_state = agent_state
         self.load_from_cache = load_from_cache
         # raw_time_list包含了原始数据中的所有日期
-        self.stock_codes, self.stock_data, self.raw_time_list = self.read_stock_data(stock_codes,
-                                                                                     load_from_cache)
+        self.stock_codes, self.stock_data, self.stock_data_without_nan, self.raw_time_list = self.read_stock_data(stock_codes, load_from_cache)
         # time_list只包含交易环境可用的有效日期
         self.time_list = self.raw_time_list[self.obs_time:]
         self.action_space = spaces.Box(low=np.array([action_bound[0] for _ in range(len(self.stock_codes))] + [0, ]),
@@ -193,8 +194,6 @@ class TradeEnv(gym.Env):
         # assert self.money > 0
         # assert not np.isnan(target_amount).any()
         self.stock_amount = target_amount
-        # 保存交易前所有股票价值
-        last_time_value = self.stock_value.copy()
         # 计算并更新当前每只未停牌股票的价值， 停牌股票价值保留上次计算结果
         self.stock_value[~nan_mask] = (self.stock_amount * price * 100)[~nan_mask]
 
@@ -252,10 +251,9 @@ class TradeEnv(gym.Env):
     def get_state(self):
         time_index = self.raw_time_list.index(self.current_time)
         time_series = self.raw_time_list[time_index - self.obs_time - 1:time_index - 1]
-        stock_obs = np.nan_to_num(
-            np.concatenate([np.expand_dims(self.stock_data[date], axis=0) for date in time_series], axis=0), nan=0.,
-            posinf=0., neginf=0.)
-        stock_obs = self.post_processor[0](stock_obs.reshape(self.obs_time, -1)).reshape(stock_obs.shape)
+        stock_obs = np.concatenate([np.expand_dims(self.stock_data_without_nan[date], axis=0) for date in time_series], axis=0)
+        if self.post_processor[0].__name__ in force_apply_in_step:
+            stock_obs = self.post_processor[0](stock_obs)
         if self.noise_rate != 0.:
             pass
             # state = np.random.multivariate_normal([0,0,0], [[state.std(axis=0)*self.noise_rate, 0],[0, state.std(axis=1)*self.noise_rate]]) + state
@@ -302,18 +300,21 @@ class TradeEnv(gym.Env):
 
     def read_stock_data(self, stock_codes, load_from_cache=False):
         save_path = os.path.join(self.stock_data_path, 'TradeEnvData.dill')
-        stocks = OrderedDict()
-        date_index = []
         # in order by stock_code
         stock_codes = [stock_code.replace('.', '_') for stock_code in stock_codes]
         stock_codes = sorted(stock_codes)
+        miss_match = False
         if load_from_cache and os.path.exists(save_path):
             with open(save_path, 'rb') as f:
                 stock_codes_, time_series, global_date_intersection = dill.load(f)
-            assert stock_codes == stock_codes_
-            assert list(time_series.values())[0].shape == (len(stock_codes), self.feature_num)
-            print("数据读取完毕")
-        else:
+            miss_match = stock_codes != stock_codes_ or list(time_series.values())[0].shape != (len(stock_codes), self.feature_num)
+            if not miss_match:
+                print("数据读取完毕")
+            else:
+                print("数据不匹配，重新读入并覆盖")
+        if not load_from_cache or not os.path.exists(save_path) or miss_match:
+            stocks = OrderedDict()
+            date_index = []
             for idx, stock_code in enumerate(stock_codes):
                 print(f'{idx + 1}/{len(stock_codes)} loaded:{stock_code}')
                 if self.data_type == 'day':
@@ -358,7 +359,13 @@ class TradeEnv(gym.Env):
                 time_series[date] = np.array(stock_data_in_date)
             with open(save_path, 'wb') as f:
                 dill.dump((stock_codes, time_series, global_date_intersection), f)
-        return stock_codes, time_series, global_date_intersection
+        time_series_without_nan = deepcopy(time_series)
+        if self.post_processor[0].__name__ in force_apply_in_step:
+            F = lambda x: x
+        else:
+            F = lambda x: self.post_processor[0](x)
+        time_series_without_nan.update(map(lambda t: (t[0], F(np.nan_to_num(t[1], nan=0., posinf=0., neginf=0.))), time_series_without_nan.items()))
+        return stock_codes, time_series, time_series_without_nan, global_date_intersection
 
     def render(self, mode='hybrid'):
         # if mode == "manual" or self.step_ >= self.episode_len or self.done:

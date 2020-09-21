@@ -20,7 +20,7 @@ def softmax(x):
 with open('../Data/000300_XSHG_list.pkl', 'rb') as f:
     stock_codes = pk.load(f)
 exp_name = 'testEnv'
-with open('../Config/TestTD3Config.json', 'r', encoding='utf-8') as f:
+with open('../Config/TD3ConfigLinux.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
 time_steps, stocks, input_dim, output_dim = 60, 180, 32, 2
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -43,4 +43,4 @@ while not done:
     obs, reward, done, _ = env.step(action)
     i += 1
 print(time()-t)
-env.render('hybrid')
+# env.render('hybrid')

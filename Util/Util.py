@@ -3,11 +3,12 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 import warnings
 from typing import Dict, List, Union, Callable, Optional
-
+import cupy as cp
+from numba import jit
 warnings.filterwarnings('ignore')
 
 scaler = StandardScaler()
-
+force_apply_in_step = ['norm_processor']
 
 def get_module(module: Optional[list]):
     import importlib
@@ -32,27 +33,54 @@ def get_modules(modules, index: Optional[int] = None):
     return res_module
 
 
+def covert_type(x):
+    if not isinstance(x, cp.ndarray) and np.prod(x.shape) > 100000:
+        x = cp.asarray(x)
+        import cupy as F
+    else:
+        import numpy as F
+    return x, F
+
+@jit
 def log2plus1R(x):
-    x = np.sign(x) * np.log2(np.abs(x + np.sign(x)))
-    x[np.isnan(x)] = 0
-    x[np.isinf(x)] = 0
-    return x
+    x, F = covert_type(x)
+    sign = F.sign(x)
+    x = sign * F.log2(F.abs(x + sign))
+    x[F.isinf(x)] = 0.
+    x[F.isnan(x)] = 0.
+    return cp.asnumpy(x) if isinstance(x, cp.ndarray) else x
 
-
+@jit
 def log10plus1R(x):
-    x = np.sign(x) * np.log10(np.abs(x + np.sign(x)))
-    x[np.isnan(x)] = 0
-    x[np.isinf(x)] = 0
-    return x
+    x, F = covert_type(x)
+    sign = F.sign(x)
+    x = sign * F.log10(F.abs(x + sign))
+    x[F.isinf(x)] = 0.
+    x[F.isnan(x)] = 0.
+    return cp.asnumpy(x) if isinstance(x, cp.ndarray) else x
 
 
 def norm_processor(state):
-    return scaler.fit_transform(state)
+    state_shape = state.shape
+    return scaler.fit_transform(state.reshape(state.shape[0], -1)).reshape(state_shape)
 
+@jit
+def selective_log10plus1R(x):
+    x, F = covert_type(x)
+    x[F.abs(x) > 10] = log10plus1R(x[F.abs(x) > 10])
+    return cp.asnumpy(x) if isinstance(x, cp.ndarray) else x
 
-def selectivelog10plus1R(x):
-    x[x > 100] = log10plus1R(x[x > 100])
-    return x
+@jit
+def diff_log10plus1R(x):
+    x, F = covert_type(x)
+    x = F.diff(x, prepend=0)
+    return log10plus1R(x)
+
+@jit
+def diff_selective_log10plus1R(x):
+    x, F = covert_type(x)
+    x = F.diff(x, prepend=0)
+    return selective_log10plus1R(x)
 
 
 def del_file(path_data):

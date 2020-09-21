@@ -211,7 +211,7 @@
       "post_processor": [
         [
           "Util.Util",
-          "selectivelog10plus1R"
+          "diff_selective_log10plus1R"
         ],
         [
           "Util.Util",
@@ -429,7 +429,7 @@
       "post_processor": [
         [
           "Util.Util",
-          "selectivelog10plus1R"
+          "diff_selective_log10plus1R"
         ],
         [
           "Util.Util",
