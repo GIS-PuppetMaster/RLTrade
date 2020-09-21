@@ -32,15 +32,18 @@ model = NBeatsNet(backcast_length=time_steps, forecast_length=output_dim,
                   thetas_dims=(4, 4, 4), share_weights_in_stack=True, hidden_layer_units=64, device=device)
 env = TradeEnv(**config['env']['test'], config=config)
 env.seed(0)
-obs = env.reset()
-done = False
-i = 0
-t = time()
-while not done:
-    res = model(torch.tensor(np.expand_dims(obs['stock_obs'], axis=0), device=device, dtype=torch.float))
-    action_prefix = softmax(np.random.randn(len(stock_codes)) + 0.2).tolist()
-    action = np.array(action_prefix + [np.random.random()])
-    obs, reward, done, _ = env.step(action)
-    i += 1
-print(time()-t)
+times = 5
+for _ in range(times):
+    obs = env.reset()
+    done = False
+    i = 0
+    t = time()
+    while not done:
+        res = model(torch.tensor(np.expand_dims(obs['stock_obs'], axis=0), device=device, dtype=torch.float))
+        action_prefix = softmax(np.random.randn(len(stock_codes)) + 0.2).tolist()
+        action = np.array(action_prefix + [np.random.random()])
+        obs, reward, done, _ = env.step(action)
+        i += 1
 # env.render('hybrid')
+    print(time()-t)
+

@@ -137,6 +137,9 @@ class TradeEnv(gym.Env):
         return price
 
     def step(self, action: np.ndarray):
+        self.step_ += 1
+        if self.step_ >= self.episode_len or self.index >= len(self.time_list):
+            self.done = True
         # 当前（分钟）每股收盘/开盘价作为price
         price = self.get_current_price()
         # 停牌股票股价为nan
@@ -162,9 +165,6 @@ class TradeEnv(gym.Env):
         action_masked[trade_mask] = exp_normed_sub_action / exp_normed_sub_action.sum()
         # action_masked = np.clip(action_masked, a_min=0, a_max=float('inf'))
         # action_masked /= action_masked.sum()
-        self.step_ += 1
-        if self.step_ >= self.episode_len or self.index >= len(self.time_list):
-            self.done = True
         # 记录交易时间
         trade_time = self.current_time
         # assert (price[~nan_mask] > 0).all()
@@ -251,7 +251,9 @@ class TradeEnv(gym.Env):
     def get_state(self):
         time_index = self.raw_time_list.index(self.current_time)
         time_series = self.raw_time_list[time_index - self.obs_time - 1:time_index - 1]
-        stock_obs = np.concatenate([np.expand_dims(self.stock_data_without_nan[date], axis=0) for date in time_series], axis=0)
+        stock_obs = np.zeros(shape=(self.obs_time, len(self.stock_codes), self.feature_num))
+        for idx, date in enumerate(time_series):
+            stock_obs[idx, ...] = self.stock_data_without_nan[date]
         if self.post_processor[0].__name__ in force_apply_in_step:
             stock_obs = self.post_processor[0](stock_obs)
         if self.noise_rate != 0.:
