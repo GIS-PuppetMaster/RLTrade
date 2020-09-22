@@ -13,6 +13,7 @@ from collections import OrderedDict
 from empyrical import sortino_ratio
 import cupy as cp
 from copy import deepcopy
+import random
 
 """
 日间择时，开盘或收盘交易
@@ -99,6 +100,8 @@ class TradeEnv(gym.Env):
         self.env_id = env_id
         self.env_type = env_type
         self.wandb_log = wandb_log
+        if self.noise_rate != 0:
+            self.noise_list = [np.random.multivariate_normal([0], [[self.noise_rate]], (self.obs_time, len(self.stock_codes), self.feature_num))[..., 0] for _ in range(10000)]
         if wandb_log:
             if config['global_wandb']:
                 wandb.init(project=config['wandb']['project'])
@@ -255,7 +258,7 @@ class TradeEnv(gym.Env):
         for idx, date in enumerate(time_series):
             stock_obs[idx, ...] = self.stock_data_without_nan[date]
         if self.noise_rate != 0.:
-            stock_obs += np.squeeze(np.random.multivariate_normal([0], np.identity(1) * self.noise_rate, stock_obs.shape))
+            stock_obs += self.noise_list[random.randint(0, len(self.noise_list) - 1)]
         if self.post_processor[0].__name__ in force_apply_in_step:
             stock_obs = self.post_processor[0](stock_obs)
         if self.agent_state:
@@ -375,7 +378,7 @@ class TradeEnv(gym.Env):
     def render(self, mode='hybrid'):
         # if mode == "manual" or self.step_ >= self.episode_len or self.done:
         if self.done:
-            if mode == 'hybrid' or (self.step_ != 0 and self.step_ % 20 == 0):
+            if mode == 'hybrid':
                 return self.draw('hybrid')
             else:
                 return self.draw(mode)

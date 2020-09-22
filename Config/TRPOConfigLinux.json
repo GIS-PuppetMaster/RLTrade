@@ -146,7 +146,7 @@
     "max_kl": 0.01,
     "cg_iters": 10,
     "lam": 0.98,
-    "entcoeff": 1e-10,
+    "entcoeff": 5e-10,
     "cg_damping": 1e-2,
     "vf_stepsize": 3e-4,
     "vf_iters": 3,
@@ -165,6 +165,10 @@
   },
   "eval": {
     "n_eval_episodes": 1,
-    "eval_freq": 12500
+    "eval_freq": 12500,
+    "log_path": null,
+    "deterministic": true,
+    "render": true,
+    "verbose": 1
   }
 }
