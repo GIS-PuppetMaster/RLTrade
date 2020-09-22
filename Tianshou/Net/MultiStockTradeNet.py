@@ -11,6 +11,8 @@ class StockActor(nn.Module):
         super().__init__()
         assert len(action_shape) == 1
         self.agent_state = agent_state
+        if not self.agent_state:
+            state_space = {'stock_obs': state_space}
         self.gpu = gpu
         self.feature_extract = feature_extract
         if self.gpu:
@@ -25,11 +27,11 @@ class StockActor(nn.Module):
         elif feature_extract == 'gru':
             rnn_input_size = np.prod(state_space['stock_obs'].shape[-2:])
             self.feature_extract_layer = nn.GRU(input_size=rnn_input_size, hidden_size=rnn_input_size // 4,
-                              num_layers=2, batch_first=True)
+                                                num_layers=2, batch_first=True)
             feature_extract_output_shape = rnn_input_size // 4
         else:
             raise Exception(f'Wrong feature_extract type:{feature_extract}')
-        if agent_state:
+        if self.agent_state:
             stock_pos_input_size = np.prod(state_space['stock_position'].shape)
             self.stock_pos_fc = nn.Sequential(
                 nn.Linear(in_features=stock_pos_input_size, out_features=stock_pos_input_size // 2),
@@ -83,6 +85,7 @@ class StockActor(nn.Module):
         if self.agent_state:
             stock_obs, stock_position, money = self.pre_process(obs, state, info)
         else:
+            obs = {'stock_obs':obs}
             stock_obs = self.pre_process(obs, state, info)
         batch, time, stocks, feature = stock_obs.shape
         # batch, feature
@@ -116,6 +119,8 @@ class StockCritic(nn.Module):
         super().__init__()
         assert len(action_shape) == 1
         self.agent_state = agent_state
+        if not self.agent_state:
+            state_space = {'stock_obs': state_space}
         self.with_action = with_action
         self.gpu = gpu
         self.feature_extract = feature_extract
@@ -131,11 +136,11 @@ class StockCritic(nn.Module):
         elif feature_extract == 'gru':
             rnn_input_size = np.prod(state_space['stock_obs'].shape[-2:])
             self.feature_extract_layer = nn.GRU(input_size=rnn_input_size, hidden_size=rnn_input_size // 4,
-                              num_layers=2, batch_first=True)
+                                                num_layers=2, batch_first=True)
             feature_extract_output_shape = rnn_input_size // 4
         else:
             raise Exception(f'Wrong feature_extract type:{feature_extract}')
-        if agent_state:
+        if self.agent_state:
             stock_pos_input_size = np.prod(state_space['stock_position'].shape)
             self.stock_pos_fc = nn.Sequential(
                 nn.Linear(in_features=stock_pos_input_size, out_features=stock_pos_input_size // 2),
@@ -187,6 +192,7 @@ class StockCritic(nn.Module):
         if self.agent_state:
             stock_obs, stock_position, money, action = self.pre_process(obs, action, state, info)
         else:
+            obs = {'stock_obs':obs}
             stock_obs, action = self.pre_process(obs, action, state, info)
         batch, time, stocks, feature = stock_obs.shape
         # batch, feature
