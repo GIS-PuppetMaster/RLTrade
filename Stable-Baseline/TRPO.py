@@ -30,11 +30,14 @@ def make_env(config, seed, mode, id):
 
 
 if __name__ == '__main__':
+    name = input("please input run_name:\n")
     argparse = argparse.ArgumentParser()
     argparse.add_argument('--config', type=str, default=None)
     args = argparse.parse_args()
     with open(args.config, 'r', encoding='utf-8') as f:
         conf = json.load(f)
+    conf['env']['train']['result_path'] += f'{name}/'
+    conf['env']['test']['result_path'] += f'{name}/'
     if conf['global_wandb']:
         wandb.init(project='Stable-BaselineTradingV3', sync_tensorboard=True, config=conf, tensorboard=True)
 

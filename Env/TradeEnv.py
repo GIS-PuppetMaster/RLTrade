@@ -279,10 +279,14 @@ class TradeEnv(gym.Env):
 
     def get_reward(self):
         if len(self.trade_history) >= 2:
-            last = (self.trade_history[-2][11] + 1) * self.principal
             now = (self.trade_history[-1][11] + 1) * self.principal
-            if last != 0:
-                reward = (now - last) / last * 100
+            next_price = self.get_current_price()
+            mask = np.isnan(next_price)
+            value = self.stock_value.copy()
+            value[~mask] = (self.stock_amount * next_price * 100)[~mask]
+            next = self.money + value.sum()
+            if now != 0:
+                reward = (next - now) / now * 100
             else:
                 reward = 0.
             # noncum_return_profit_ratio = np.diff(np.array([i[11] for i in self.trade_history]), prepend=0)
