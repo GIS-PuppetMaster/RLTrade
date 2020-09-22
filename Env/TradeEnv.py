@@ -57,8 +57,9 @@ class TradeEnv(gym.Env):
         self.stock_data_path = stock_data_path
         self.result_path = result_path
         self.select_num = select_num
-        if env_id == 0 and os.path.exists(self.result_path):
-            shutil.rmtree(self.result_path)
+        if env_id == 0:
+            if os.path.exists(self.result_path):
+                shutil.rmtree(self.result_path)
             os.makedirs(self.result_path)
         self.principal = principal
         self.poundage_rate = poundage_rate
@@ -93,7 +94,7 @@ class TradeEnv(gym.Env):
                                                   'stock_position': spaces.Box(low=position_low, high=position_high),
                                                   'money': spaces.Box(low=money_low, high=money_high)})
         else:
-            self.observation_space = spaces.Box(low=obs_low, high=obs_high)
+            self.observation_space = spaces.Dict({'stock_obs': spaces.Box(low=obs_low, high=obs_high)})
         self.step_ = 0
         assert trade_time == "open" or trade_time == "close"
         self.trade_time = trade_time
@@ -261,8 +262,8 @@ class TradeEnv(gym.Env):
             stock_obs += self.noise_list[random.randint(0, len(self.noise_list) - 1)]
         if self.post_processor[0].__name__ in force_apply_in_step:
             stock_obs = self.post_processor[0](stock_obs)
+        obs = {'stock_obs': stock_obs}
         if self.agent_state:
-            obs = {'stock_obs': stock_obs}
             # 当前每只股票的每股成本
             stock_cost = np.expand_dims((self.buy_value - self.sold_value) / (100 * np.array(self.stock_amount)),
                                         axis=0)
@@ -275,18 +276,20 @@ class TradeEnv(gym.Env):
             obs['money'] = money_obs
             return obs
         else:
-            return stock_obs
+            return obs
 
     def get_reward(self):
         if len(self.trade_history) >= 2:
             now = (self.trade_history[-1][11] + 1) * self.principal
+            now_price = self.trade_history[-1][1]
             next_price = self.get_current_price()
-            mask = np.isnan(next_price)
+            next_mask = np.isnan(next_price)
+            now_mask = np.isnan(now_price)
             value = self.stock_value.copy()
-            value[~mask] = (self.stock_amount * next_price * 100)[~mask]
+            value[~next_mask] = (self.stock_amount * next_price * 100)[~next_mask]
             next = self.money + value.sum()
             if now != 0:
-                reward = (next - now) / now * 100
+                reward = ((next / now - 1) - (next_price[~next_mask].mean() / now_price[~now_mask].mean() - 1)) * 100
             else:
                 reward = 0.
             # noncum_return_profit_ratio = np.diff(np.array([i[11] for i in self.trade_history]), prepend=0)

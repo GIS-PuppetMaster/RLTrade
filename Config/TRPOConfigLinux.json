@@ -47,7 +47,7 @@
       ],
       "result_path": "../PlotOutput/TRPO/train/",
       "principal": 1e6,
-      "poundage_rate": 2.5e-3,
+      "poundage_rate": 2.5e-2,
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
@@ -164,8 +164,8 @@
     "save_freq": 12500
   },
   "eval": {
-    "n_eval_episodes": 1,
-    "eval_freq": 12500,
+    "n_eval_episodes": 5,
+    "eval_freq": 25000,
     "log_path": null,
     "deterministic": true,
     "render": true,
