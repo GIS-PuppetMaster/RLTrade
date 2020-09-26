@@ -55,11 +55,11 @@ if __name__ == '__main__':
     action_shape = test_envs.action_space[0].shape
 
     actor_net = StockActor(state_space, action_shape, config['env']['train']['agent_state'], config['train']['gpu'], **config['policy']['actor'])
-    actor_optim = torch.optim.Adam(actor_net.parameters(), lr=config['policy']['actor']['lr'])
+    actor_optim = torch.optim.Adam(actor_net.parameters(), lr=config['policy']['actor']['lr'], weight_decay=config['policy']['actor']['l2_ratio'])
     critic1_net = StockCritic(state_space, action_shape, config['env']['train']['agent_state'], config['train']['gpu'], **config['policy']['critic_1'])
-    critic1_optim = torch.optim.Adam(critic1_net.parameters(), lr=config['policy']['critic_1']['lr'])
+    critic1_optim = torch.optim.Adam(critic1_net.parameters(), lr=config['policy']['critic_1']['lr'], weight_decay=config['policy']['critic_1']['l2_ratio'])
     critic2_net = StockCritic(state_space, action_shape, config['env']['train']['agent_state'], config['train']['gpu'], **config['policy']['critic_2'])
-    critic2_optim = torch.optim.Adam(critic2_net.parameters(), lr=config['policy']['critic_2']['lr'])
+    critic2_optim = torch.optim.Adam(critic2_net.parameters(), lr=config['policy']['critic_2']['lr'], weight_decay=config['policy']['critic_2']['l2_ratio'])
 
     if config['train']['gpu']:
         actor_net = actor_net.cuda()

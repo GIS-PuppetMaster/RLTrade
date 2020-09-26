@@ -203,6 +203,7 @@
         "601989.XSHG",
         "601998.XSHG"
       ],
+      "trade_stock_num": 20,
       "result_path": "../PlotOutput/TD3/train/",
       "principal": 1e6,
       "poundage_rate": 2.5e-3,
@@ -421,6 +422,7 @@
         "601989.XSHG",
         "601998.XSHG"
       ],
+      "trade_stock_num": 20,
       "result_path": "../PlotOutput/TD3/test/",
       "principal": 1e6,
       "poundage_rate": 2.5e-3,
@@ -468,7 +470,9 @@
       ],
       "share_weights_in_stack": false,
       "hidden_layer_units": 64,
-      "feature_extract": "nbeats"
+      "feature_extract": "conv1d",
+      "l2_ratio": 1e-3,
+      "batch_norm": false
     },
     "critic_1": {
       "lr": 1e-3,
@@ -486,8 +490,10 @@
       ],
       "share_weights_in_stack": false,
       "hidden_layer_units": 64,
-      "feature_extract": "nbeats",
-      "with_action": true
+      "feature_extract": "conv1d",
+      "with_action": true,
+      "l2_ratio": 1e-3,
+      "batch_norm": false
     },
     "critic_2": {
       "lr": 1e-3,
@@ -505,13 +511,15 @@
       ],
       "share_weights_in_stack": false,
       "hidden_layer_units": 64,
-      "feature_extract": "nbeats",
-      "with_action": true
+      "feature_extract": "conv1d",
+      "with_action": true,
+      "l2_ratio": 1e-3,
+      "batch_norm": false
     },
     "policy_parameter": {
       "tau": 0.005,
-      "gamma": 0.99,
-      "policy_noise": 0.2,
+      "gamma": 0.8,
+      "policy_noise": 0.1,
       "update_actor_freq": 2,
       "noise_clip": 0.5,
       "reward_normalization": false,

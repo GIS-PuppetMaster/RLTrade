@@ -102,21 +102,21 @@ class CustomMultiStockPolicy(ActorCriticPolicy):
             time, stocks, feature = convert(time), convert(stocks), convert(feature)
             extracted_features = tf.reshape(extracted_features, shape=(-1, time, stocks * feature))
             extracted_features = tf.nn.leaky_relu(
-                tf.layers.conv1d(extracted_features, 32, 9, dilation_rate=1, kernel_regularizer=tf.contrib.layers.l1_regularizer(0.5)))
-            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 32, 7, dilation_rate=2, kernel_regularizer=tf.contrib.layers.l1_regularizer(0.1)))
-            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 64, 5, dilation_rate=4, kernel_regularizer=tf.contrib.layers.l1_regularizer(0.1)))
-            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 128, 3, dilation_rate=8, kernel_regularizer=tf.contrib.layers.l1_regularizer(0.1)))
-            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 256, 8, dilation_rate=1, kernel_regularizer=tf.contrib.layers.l1_regularizer(0.1)))
+                tf.layers.conv1d(extracted_features, 32, 9, dilation_rate=1, kernel_regularizer=tf.contrib.layers.l2_regularizer(1.)))
+            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 32, 7, dilation_rate=2, kernel_regularizer=tf.contrib.layers.l2_regularizer(1.)))
+            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 64, 5, dilation_rate=4, kernel_regularizer=tf.contrib.layers.l2_regularizer(1.)))
+            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 128, 3, dilation_rate=8, kernel_regularizer=tf.contrib.layers.l2_regularizer(1.)))
+            extracted_features = tf.nn.leaky_relu(tf.layers.conv1d(extracted_features, 256, 8, dilation_rate=1, kernel_regularizer=tf.contrib.layers.l2_regularizer(1.)))
             extracted_features = tf.layers.flatten(extracted_features)
             pi_h = extracted_features
             for i, layer_size in enumerate([256, 128]):
-                pi_h = tf.nn.tanh(tf.layers.dense(pi_h, layer_size, name='pi_fc' + str(i)))
+                pi_h = tf.nn.leaky_relu(tf.layers.dense(pi_h, layer_size, name='pi_fc' + str(i), kernel_regularizer=tf.contrib.layers.l2_regularizer(1.)))
             pi_latent = pi_h
 
             vf_h = extracted_features
             for i, layer_size in enumerate([256, 128]):
-                vf_h = tf.nn.tanh(tf.layers.dense(vf_h, layer_size, name='vf_fc' + str(i)))
-            value_fn = tf.nn.tanh(tf.layers.dense(vf_h, 1, name='vf_fc'+str(i+1)))
+                vf_h = tf.nn.leaky_relu(tf.layers.dense(vf_h, layer_size, name='vf_fc' + str(i), kernel_regularizer=tf.contrib.layers.l2_regularizer(1.)))
+            value_fn = tf.nn.leaky_relu(tf.layers.dense(vf_h, 1, name='vf_fc'+str(i+1), kernel_regularizer=tf.contrib.layers.l2_regularizer(1.)))
             vf_latent = vf_h
 
             self._proba_distribution, self._policy, self.q_value = \

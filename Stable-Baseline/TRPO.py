@@ -51,7 +51,8 @@ if __name__ == '__main__':
 
     os.environ["CUDA_VISIBLE_DEVICES"] = conf['train']['gpu']
     eval_env = TradeEnv(config=conf, **conf['env']['test'], env_id=0)
-    eval_env.seed(conf['seed'])
+    if conf['seed'] is not None:
+        eval_env.seed(conf['seed'])
     env = DummyVecEnv([make_env(conf, conf['seed'], 'train', id) for id in range(conf['env']['train_env_num'])])
     monitorCallback = CustomCallback()
     checkPointCallback = CheckpointCallback(save_freq=conf['train']['save_freq'], save_path=os.path.join(wandb.run.dir, conf['train']['save_dir']))

@@ -1,4 +1,6 @@
 import json
+import Tianshou
+import torch
 import pickle as pk
 from Util.Util import *
 from Env.TradeEnv import TradeEnv
@@ -27,7 +29,7 @@ i = 0
 buffer = StockPrioritizedReplayBuffer(**config['env']['test'], **config['train']['replay_buffer'])
 local_buffer = []
 for i in range(2):
-    action_prefix = softmax(np.random.randn(len(stock_codes)) + 0.2).tolist()
+    action_prefix = softmax(np.random.randn(config['env']['train']['trade_stock_num'])).tolist()
     action = np.array(action_prefix + [np.random.random()])
     obs_next, reward, done, info = env.step(action)
     local_buffer.append([deepcopy(obs), action, reward, done, deepcopy(obs_next), info])

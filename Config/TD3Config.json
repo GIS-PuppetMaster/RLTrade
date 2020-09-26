@@ -203,6 +203,7 @@
         "601989.XSHG",
         "601998.XSHG"
       ],
+      "trade_stock_num": 20,
       "result_path": "E:/运行结果/TD3/train/",
       "principal": 1e6,
       "poundage_rate": 2.5e-3,
@@ -421,6 +422,7 @@
         "601989.XSHG",
         "601998.XSHG"
       ],
+      "trade_stock_num": 20,
       "result_path": "E:/运行结果/TD3/test/",
       "principal": 1e6,
       "poundage_rate": 2.5e-3,
@@ -468,7 +470,9 @@
       ],
       "share_weights_in_stack": false,
       "hidden_layer_units": 64,
-      "feature_extract": "nbeats"
+      "feature_extract": "conv1d",
+      "l2_ratio": 1e-3,
+      "batch_norm": true
     },
     "critic_1": {
       "lr": 1e-3,
@@ -486,8 +490,10 @@
       ],
       "share_weights_in_stack": false,
       "hidden_layer_units": 64,
-      "feature_extract": "nbeats",
-      "with_action": true
+      "feature_extract": "conv1d",
+      "with_action": true,
+      "l2_ratio": 1e-3,
+      "batch_norm": true
     },
     "critic_2": {
       "lr": 1e-3,
@@ -505,8 +511,10 @@
       ],
       "share_weights_in_stack": false,
       "hidden_layer_units": 64,
-      "feature_extract": "nbeats",
-      "with_action": true
+      "feature_extract": "conv1d",
+      "with_action": true,
+      "l2_ratio": 1e-3,
+      "batch_norm": true
     },
     "policy_parameter": {
       "tau": 0.005,

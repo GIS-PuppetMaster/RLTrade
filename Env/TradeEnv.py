@@ -21,7 +21,7 @@ import random
 
 
 class TradeEnv(gym.Env):
-    def __init__(self, stock_data_path, config, start_episode=0, episode_len=720, obs_time_size=60,
+    def __init__(self, stock_data_path, trade_stock_num, config, start_episode=0, episode_len=720, obs_time_size=60,
                  sim_delta_time=1, stock_codes=None,
                  result_path="E:/运行结果/train/", principal=1e7, poundage_rate=5e-3,
                  time_format="%Y-%m-%d", auto_open_result=False,
@@ -55,6 +55,7 @@ class TradeEnv(gym.Env):
         assert stock_codes is not None
         self.delta_time = sim_delta_time
         self.stock_data_path = stock_data_path
+        self.trade_stock_num = trade_stock_num
         self.result_path = result_path
         self.select_num = select_num
         if env_id == 0:
@@ -75,19 +76,21 @@ class TradeEnv(gym.Env):
         self.agent_state = agent_state
         self.load_from_cache = load_from_cache
         # raw_time_list包含了原始数据中的所有日期
-        self.stock_codes, self.stock_data, self.stock_data_without_nan, self.raw_time_list = self.read_stock_data(stock_codes, load_from_cache)
+        self.all_stock_codes, self.all_stock_data, self.all_stock_data_for_state, self.raw_time_list = read_stock_data(stock_data_path, stock_codes, self.post_processor, data_type, feature_num,
+                                                                                                                       load_from_cache)
+        self.select_stock_set()
         # time_list只包含交易环境可用的有效日期
         self.time_list = self.raw_time_list[self.obs_time:]
-        self.action_space = spaces.Box(low=np.array([action_bound[0] for _ in range(len(self.stock_codes))] + [0, ]),
+        self.action_space = spaces.Box(low=np.array([action_bound[0] for _ in range(self.trade_stock_num)] + [0, ]),
                                        high=np.array(
-                                           [float(action_bound[1]) for _ in range(len(self.stock_codes))] + [
+                                           [float(action_bound[1]) for _ in range(self.trade_stock_num)] + [
                                                float(action_bound[1]), ]))
-        obs_low = np.full((self.obs_time, len(self.stock_codes), self.feature_num), float('-inf'))
-        obs_high = np.full((self.obs_time, len(self.stock_codes), self.feature_num), float('inf'))
+        obs_low = np.full((self.obs_time, self.trade_stock_num, self.feature_num), float('-inf'))
+        obs_high = np.full((self.obs_time, self.trade_stock_num, self.feature_num), float('inf'))
         if agent_state:
             assert len(self.post_processor) == 3
-            position_low = np.zeros(shape=(2, len(self.stock_codes)))
-            position_high = np.full((2, len(self.stock_codes)), float('inf'))
+            position_low = np.zeros(shape=(2, self.trade_stock_num))
+            position_high = np.full((2, self.trade_stock_num), float('inf'))
             money_low = np.zeros(shape=(1,))
             money_high = np.full((1,), float('inf'))
             self.observation_space = spaces.Dict({'stock_obs': spaces.Box(low=obs_low, high=obs_high),
@@ -102,7 +105,7 @@ class TradeEnv(gym.Env):
         self.env_type = env_type
         self.wandb_log = wandb_log
         if self.noise_rate != 0:
-            self.noise_list = [np.random.multivariate_normal([0], [[self.noise_rate]], (self.obs_time, len(self.stock_codes), self.feature_num))[..., 0] for _ in range(10000)]
+            self.noise_list = [np.random.multivariate_normal([0], [[self.noise_rate]], (self.obs_time, self.trade_stock_num, self.feature_num))[..., 0] for _ in range(10000)]
         if wandb_log:
             if config['global_wandb']:
                 wandb.init(project=config['wandb']['project'])
@@ -111,6 +114,8 @@ class TradeEnv(gym.Env):
         np.random.seed(seed)
 
     def reset(self):
+        # 随机初始化交易股票
+        self.select_stock_set()
         # 随机初始化时间
         self.index = np.random.randint(low=1, high=len(self.time_list) - self.episode_len)
         self.current_time = self.time_list[self.index]
@@ -121,15 +126,26 @@ class TradeEnv(gym.Env):
         self.buy_value = np.zeros(shape=(len(self.stock_codes, )))
         self.sold_value = np.zeros(shape=(len(self.stock_codes, )))
         # 持有股票数目(股)
-        self.stock_amount = [0] * len(self.stock_codes)
+        self.stock_amount = [0] * self.trade_stock_num
         # 上次购入股票所花金额
-        self.stock_value = np.zeros(shape=(len(self.stock_codes),))
+        self.stock_value = np.zeros(shape=(self.trade_stock_num,))
         # 交易历史
         self.trade_history = []
         self.episode += 1
         self.step_ = 0
         self.start_time = self.current_time
+        if self.noise_rate != 0 and self.episode > len(self.noise_list):
+            self.noise_list = [np.random.multivariate_normal([0], [[self.noise_rate]], (self.obs_time, self.trade_stock_num, self.feature_num))[..., 0] for _ in range(10000)]
         return self.get_state()
+
+    def select_stock_set(self):
+        self.stock_index = np.random.randint(low=0, high=len(self.all_stock_codes), size=self.trade_stock_num)
+        self.stock_codes = np.array(self.all_stock_codes)[self.stock_index].tolist()
+        self.stock_data = OrderedDict()
+        self.stock_data_for_state = OrderedDict()
+        for date in self.all_stock_data.keys():
+            self.stock_data[date] = self.all_stock_data[date][self.stock_index]
+            self.stock_data_for_state[date] = self.all_stock_data_for_state[date][self.stock_index]
 
     def get_current_price(self):
         if self.trade_time == 'close':
@@ -245,7 +261,8 @@ class TradeEnv(gym.Env):
                        f'{self.env_type}_{self.env_id}_reward': reward}, sync=False)
         info = dict(obs_current_date=trade_time, obs_next_current_date=self.current_time,
                     obs_pass_date=self.raw_time_list[self.raw_time_list.index(trade_time) - self.obs_time],
-                    obs_next_pass_date=self.raw_time_list[self.raw_time_list.index(self.current_time) - self.obs_time])
+                    obs_next_pass_date=self.raw_time_list[self.raw_time_list.index(self.current_time) - self.obs_time],
+                    stock_index=self.stock_index)
         obs = self.get_state()
         if self.done and ((self.env_type == 'train' and self.episode % 20 == 0) or (
                 self.env_type == 'test' and self.episode % 10 == 0)):
@@ -255,9 +272,9 @@ class TradeEnv(gym.Env):
     def get_state(self):
         time_index = self.raw_time_list.index(self.current_time)
         time_series = self.raw_time_list[time_index - self.obs_time - 1:time_index - 1]
-        stock_obs = np.zeros(shape=(self.obs_time, len(self.stock_codes), self.feature_num))
+        stock_obs = np.zeros(shape=(self.obs_time, self.trade_stock_num, self.feature_num))
         for idx, date in enumerate(time_series):
-            stock_obs[idx, ...] = self.stock_data_without_nan[date]
+            stock_obs[idx, ...] = self.stock_data_for_state[date]
         if self.noise_rate != 0.:
             stock_obs += self.noise_list[random.randint(0, len(self.noise_list) - 1)]
         if self.post_processor[0].__name__ in force_apply_in_step:
@@ -290,6 +307,7 @@ class TradeEnv(gym.Env):
             next = self.money + value.sum()
             if now != 0:
                 reward = ((next / now - 1) - (next_price[~next_mask].mean() / now_price[~now_mask].mean() - 1)) * 100
+                # reward = (next / now - 1) * 100
             else:
                 reward = 0.
             # noncum_return_profit_ratio = np.diff(np.array([i[11] for i in self.trade_history]), prepend=0)
@@ -312,75 +330,6 @@ class TradeEnv(gym.Env):
             self.index += self.delta_time
         else:
             self.done = True
-
-    def read_stock_data(self, stock_codes, load_from_cache=False):
-        save_path = os.path.join(self.stock_data_path, 'TradeEnvData.dill')
-        # in order by stock_code
-        stock_codes = [stock_code.replace('.', '_') for stock_code in stock_codes]
-        stock_codes = sorted(stock_codes)
-        miss_match = False
-        if load_from_cache and os.path.exists(save_path):
-            with open(save_path, 'rb') as f:
-                stock_codes_, time_series, global_date_intersection = dill.load(f)
-            miss_match = stock_codes != stock_codes_ or list(time_series.values())[0].shape != (len(stock_codes), self.feature_num)
-            if not miss_match:
-                print("数据读取完毕")
-            else:
-                print("数据不匹配，重新读入并覆盖")
-        if not load_from_cache or not os.path.exists(save_path) or miss_match:
-            stocks = OrderedDict()
-            date_index = []
-            for idx, stock_code in enumerate(stock_codes):
-                print(f'{idx + 1}/{len(stock_codes)} loaded:{stock_code}')
-                if self.data_type == 'day':
-                    raw = pd.read_csv(self.stock_data_path + stock_code + '_with_indicator.csv', index_col=False)
-                else:
-                    raise Exception(f"Wrong data type for:{self.data_type}")
-                raw_moneyflow = pd.read_csv(self.stock_data_path + stock_code + '_moneyflow.csv', index_col=False)[
-                    ['date', 'change_pct', 'net_pct_main', 'net_pct_xl', 'net_pct_l', 'net_pct_m', 'net_pct_s']].apply(
-                    lambda x: x / 100 if isinstance(x[1], np.float64) else x)
-                raw = pd.merge(raw, raw_moneyflow, left_on='Unnamed: 0', right_on='date', sort=False, copy=False).drop(
-                    'date', 1).rename(columns={'Unnamed: 0': 'date'})
-                raw.fillna(method='ffill', inplace=True)
-                date_index.append(np.array(raw['date']))
-                raw.set_index('date', inplace=True)
-                stocks[stock_code] = raw
-            # 生成各支股票数据按时间的并集
-            global_date_intersection = date_index[0]
-            for i in range(1, len(date_index)):
-                global_date_intersection = np.union1d(global_date_intersection, date_index[i])
-            global_date_intersection = global_date_intersection.tolist()
-            # 根据并集补全停牌数据
-            for key in stocks.keys():
-                value = stocks[key]
-                date = value.index.tolist()
-                # 需要填充的日期
-                fill = np.setdiff1d(global_date_intersection, date)
-                for fill_date in fill:
-                    value.loc[fill_date] = [np.nan] * value.shape[1]
-                if len(fill) > 0:
-                    value.sort_index(inplace=True)
-                stocks[key] = np.array(value)
-            # 生成股票数据
-            time_series = OrderedDict()
-            # in order by stock_codes
-            # 当前时间在state最后
-            for i in range(len(global_date_intersection)):
-                date = global_date_intersection[i]
-                stock_data_in_date = []
-                for key in stocks.keys():
-                    value = stocks[key][i, :]
-                    stock_data_in_date.append(value.tolist())
-                time_series[date] = np.array(stock_data_in_date)
-            with open(save_path, 'wb') as f:
-                dill.dump((stock_codes, time_series, global_date_intersection), f)
-        time_series_without_nan = deepcopy(time_series)
-        if self.post_processor[0].__name__ in force_apply_in_step:
-            F = lambda x: x
-        else:
-            F = lambda x: self.post_processor[0](x)
-        time_series_without_nan.update(map(lambda t: (t[0], F(np.nan_to_num(t[1], nan=0., posinf=0., neginf=0.))), time_series_without_nan.items()))
-        return stock_codes, time_series, time_series_without_nan, global_date_intersection
 
     def render(self, mode='hybrid'):
         # if mode == "manual" or self.step_ >= self.episode_len or self.done:
@@ -578,10 +527,10 @@ class TradeEnv(gym.Env):
                        hovertemplate="x:%{x}\ny:%{y}\n金额占比:%{customdata}\n手数:%{z}<extra></extra>"),
                 row=2, col=2, visible=True, xaxis='x4', yaxis='y6')
             steps = []
-            for i in range(0, len(self.stock_codes) * 5, 5):
+            for i in range(0, self.trade_stock_num * 5, 5):
                 step = dict(
                     method="update",
-                    args=[{'visible': [False] * (len(self.stock_codes) * 5 + 3)},
+                    args=[{'visible': [False] * (self.trade_stock_num * 5 + 3)},
                           {'title': f"{self.stock_codes[i // 5]}回测结果, 初始资金：{self.principal}"}
                           ],
                     label=self.stock_codes[i // 5],
