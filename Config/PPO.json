@@ -1,6 +1,5 @@
 {
   "global_wandb": true,
-  "seed": null,
   "wandb": {
     "project": "Tianshou-Trader",
     "sync_tensorboard": true,
@@ -205,7 +204,7 @@
         "601998.XSHG"
       ],
       "trade_stock_num": 20,
-      "result_path": "../PlotOutput/TRPO/train/",
+      "result_path": "../PlotOutput/PPO/train/",
       "principal": 1e5,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
@@ -228,7 +227,7 @@
       "agent_state": false,
       "data_type": "day",
       "feature_num": 32,
-      "noise_rate": 10,
+      "noise_rate": 0,
       "load_from_cache": true,
       "wandb_log": false,
       "env_type": "train",
@@ -427,7 +426,7 @@
         "601998.XSHG"
       ],
       "trade_stock_num": 20,
-      "result_path": "../PlotOutput/TRPO/test/",
+      "result_path": "../PlotOutput/PPO/test/",
       "principal": 1e5,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
@@ -461,34 +460,83 @@
     }
   },
   "policy": {
-    "gamma": 0.8,
-    "timesteps_per_batch":1024,
-    "max_kl": 0.01,
-    "cg_iters": 10,
-    "lam": 0.98,
-    "entcoeff": 1e-10,
-    "cg_damping": 1e-2,
-    "vf_stepsize": 3e-4,
-    "vf_iters": 3,
-    "verbose": 1,
-    "_init_setup_model": true,
-    "policy_kwargs": null,
-    "full_tensorboard_log": false,
-    "n_cpu_tf_sess": null
+    "lr": 1e-4,
+    "l2_ratio": 0,
+    "actor": {
+      "forecast_length": 2,
+      "stack_types": [
+        "generic",
+        "generic",
+        "generic"
+      ],
+      "nb_blocks_per_stack": 2,
+      "thetas_dims": [
+        4,
+        4,
+        4
+      ],
+      "share_weights_in_stack": false,
+      "hidden_layer_units": 64,
+      "feature_extract": "conv1d",
+      "l2_ratio": 1e-3,
+      "batch_norm": true
+    },
+    "critic": {
+      "forecast_length": 2,
+      "stack_types": [
+        "generic",
+        "generic",
+        "generic"
+      ],
+      "nb_blocks_per_stack": 2,
+      "thetas_dims": [
+        4,
+        4,
+        4
+      ],
+      "share_weights_in_stack": false,
+      "hidden_layer_units": 64,
+      "feature_extract": "conv1d",
+      "l2_ratio": 1e-3,
+      "batch_norm": true,
+      "with_action": false
+    },
+    "policy_parameter": {
+      "dist_fn": [
+        "torch.distributions.normal",
+        "Normal"
+      ],
+      "discount_factor": 0.8,
+      "max_grad_norm": 0.1,
+      "eps_clip": 0.2,
+      "vf_coef": 0.5,
+      "ent_coef": 0.01,
+      "gae_lambda": 0.95,
+      "dual_clip": null,
+      "value_clip": true,
+      "reward_normalization": true,
+      "max_batchsize": 256
+    }
   },
   "train": {
-    "total_timesteps": 250000000,
+    "replay_buffer": {
+      "size": 10000,
+      "alpha": 0.6,
+      "beta": 0.4
+    },
+    "train_parameter": {
+      "max_epoch": 1000,
+      "step_per_epoch": 1,
+      "collect_per_step": 1,
+      "repeat_per_collect": 1,
+      "episode_per_test": 1,
+      "batch_size": 16,
+      "log_interval": 1,
+      "verbose": true,
+      "test_in_train": true
+    },
     "log_dir": "../TensorboardLog/",
-    "save_dir": "../checkpoints",
-    "gpu": "0",
-    "save_freq": 12500
-  },
-  "eval": {
-    "n_eval_episodes": 5,
-    "eval_freq": 12500,
-    "log_path": null,
-    "deterministic": true,
-    "render": true,
-    "verbose": 1
+    "save_dir": "../TensorboardLog/policy.pth",
+    "gpu": true
   }
 }

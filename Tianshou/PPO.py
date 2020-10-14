@@ -1,4 +1,5 @@
 import sys
+
 if sys.platform == 'win32':
     sys.path.append("D:\\PycharmProjects\\Stable-BaselineTrading\\")
 else:
@@ -11,7 +12,7 @@ from Tianshou.StockReplayBuffer import *
 import json
 import argparse
 import os
-from Util.Util import get_module
+
 
 def make_env(i, env_type, test_mode):
     return lambda: TradeEnv(**config['env'][env_type], env_id=i, run_id=run_id, config=config, test_mode=test_mode)
@@ -22,6 +23,7 @@ if __name__ == '__main__':
     argparser.add_argument('--config', type=str)
     argparser.add_argument('--test', action='store_true', default=False)
     argparser.add_argument('--load_dir', type=str, default=None)
+    argparser.add_argument('--resume', type=str, default=None)
     args = argparser.parse_args()
 
     with open(args.config, 'r', encoding='utf-8') as f:
@@ -31,7 +33,11 @@ if __name__ == '__main__':
     run_id = None
     if config['global_wandb'] and not args.test:
         import wandb
-        wandb.init(**config['wandb'], config=config)
+
+        if args.resume is None:
+            wandb.init(**config['wandb'], config=config)
+        else:
+            wandb.init(**config['wandb'], config=config, resume=args.resume)
         if save_dir is None:
             save_dir = wandb.run.dir + "\\" + "policy.pth"
         run_id = wandb.run.id
@@ -52,8 +58,7 @@ if __name__ == '__main__':
 
     actor_net = StockDistributionalActor(state_space, action_shape, config['env']['train']['agent_state'], config['train']['gpu'], **config['policy']['actor'])
     critic_net = StockCritic(state_space, action_shape, config['env']['train']['agent_state'], config['train']['gpu'], **config['policy']['critic'])
-    optim = torch.optim.Adam(list(actor_net.parameters()) + list(critic_net.parameters()), lr=config['policy']['lr'])
-    
+    optim = torch.optim.Adam(list(actor_net.parameters()) + list(critic_net.parameters()), lr=config['policy']['lr'], weight_decay=config['policy']['l2_ratio'])
 
     if config['train']['gpu']:
         actor_net = actor_net.cuda()
@@ -62,21 +67,26 @@ if __name__ == '__main__':
         actor_net = actor_net.eval()
         critic_net = critic_net.eval()
     config['policy']['policy_parameter']['dist_fn'] = get_module(config['policy']['policy_parameter']['dist_fn'])
-    policy = ts.policy.A2CPolicy(actor_net, critic_net, optim, **config['policy']['policy_parameter'])
+    policy = ts.policy.PPOPolicy(actor_net, critic_net, optim,
+                                 **config['policy']['policy_parameter'],
+                                 action_range=(
+                                     test_envs.action_space[0].low.mean(), test_envs.action_space[0].high.mean()))
     if not args.test:
         train_collector = ts.data.Collector(policy, train_envs,
-                                            ts.data.PrioritizedReplayBuffer(**config['train']['replay_buffer']))
-    else:
+                                            StockPrioritizedReplayBuffer(**config['train']['replay_buffer'],
+                                                                         **config['env']['train']))
+    elif args.test or args.resume is not None:
         policy.load_state_dict(torch.load(save_dir))
+        print('模型读取完毕')
 
     test_collector = ts.data.Collector(policy, test_envs)
 
     if not args.test:
         writer = SummaryWriter(config['train']['log_dir'])
         result = ts.trainer.onpolicy_trainer(policy, train_collector, test_collector,
-                                              **config['train']['train_parameter'],
-                                              writer=writer,
-                                              save_fn=lambda p: torch.save(p.state_dict(), save_dir))
+                                             **config['train']['train_parameter'],
+                                             writer=writer,
+                                             save_fn=lambda p: torch.save(p.state_dict(), save_dir))
         torch.save(policy.state_dict(), save_dir)
     else:
         ts.trainer.test_episode(policy, test_collector, epoch=0, n_episode=1, test_fn=None)

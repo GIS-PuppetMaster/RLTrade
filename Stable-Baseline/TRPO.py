@@ -1,7 +1,6 @@
 import json
-import sys
 import wandb
-
+import sys
 if sys.platform == 'win32':
     sys.path.append("D:\\PycharmProjects\\Stable-BaselineTrading\\")
 else:
@@ -47,7 +46,7 @@ if __name__ == '__main__':
     conf['env']['train']['result_path'] = replace_path(conf['env']['train']['result_path'], name)
     conf['env']['test']['result_path'] = replace_path(conf['env']['test']['result_path'], name)
     if conf['global_wandb']:
-        wandb.init(project='Stable-BaselineTradingV3', sync_tensorboard=True, config=conf, tensorboard=True)
+        wandb.init(project='Stable-BaselineTradingV3', sync_tensorboard=True, config=conf, tensorboard=True, notes=name)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = conf['train']['gpu']
     eval_env = TradeEnv(config=conf, **conf['env']['test'], env_id=0)

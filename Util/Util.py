@@ -9,10 +9,15 @@ from typing import Dict, List, Union, Callable, Optional
 import cupy as cp
 from numba import jit
 import dill
+import pywt
+import math
+
 warnings.filterwarnings('ignore')
 
 scaler = StandardScaler()
-force_apply_in_step = ['norm_processor']
+force_apply_in_step = ['norm_processor', 'diff_log10plus1R', 'log10plus1R_diff', 'wavelet']
+force_apply_before_step = ['log10plus1R_diff']
+
 
 def get_module(module: Optional[list]):
     import importlib
@@ -45,6 +50,7 @@ def covert_type(x):
         import numpy as F
     return x, F
 
+
 @jit
 def log2plus1R(x):
     x, F = covert_type(x)
@@ -53,6 +59,7 @@ def log2plus1R(x):
     x[F.isinf(x)] = 0.
     x[F.isnan(x)] = 0.
     return cp.asnumpy(x) if isinstance(x, cp.ndarray) else x
+
 
 @jit
 def log10plus1R(x):
@@ -68,23 +75,49 @@ def norm_processor(state):
     state_shape = state.shape
     return scaler.fit_transform(state.reshape(state.shape[0], -1)).reshape(state_shape)
 
+
 @jit
 def selective_log10plus1R(x):
     x, F = covert_type(x)
     x[F.abs(x) > 10] = log10plus1R(x[F.abs(x) > 10])
     return cp.asnumpy(x) if isinstance(x, cp.ndarray) else x
 
+
 @jit
 def diff_log10plus1R(x):
     x, F = covert_type(x)
-    x = F.diff(x, prepend=0)
+    x = F.diff(x, prepend=0, axis=0)
     return log10plus1R(x)
+
+
+@jit
+def log10plus1R_diff(x):
+    x, F = covert_type(x)
+    if len(x.shape) == 2:
+        return log10plus1R(x)
+    else:
+        return F.diff(x, axis=0)
+
 
 @jit
 def diff_selective_log10plus1R(x):
     x, F = covert_type(x)
     x = F.diff(x, prepend=0)
     return selective_log10plus1R(x)
+
+@jit(parallel=True,nogil=True)
+def wavelet(x):
+    z = [None] * x.shape[1]
+    for stock in range(x.shape[1]):
+        y = [None] * x.shape[2]
+        for feature in range(x.shape[2]):
+            y[feature] = pywt.wavedec(x[:, stock, feature], 'haar', level=3)[0].reshape(-1, 1)
+        # time, feature
+        y = np.concatenate(y, axis=-1)
+        z[stock] = y.reshape(y.shape[0], 1, y.shape[-1])
+    # time, stock, feature
+    z = np.concatenate(z, axis=1)
+    return log10plus1R(z)
 
 
 def del_file(path_data):
@@ -170,7 +203,8 @@ def LoadCustomPolicyForTest(model_path):
     model.load_parameters(params)
     return model
 
-def read_stock_data(stock_data_path, stock_codes, post_processor, data_type, feature_num, load_from_cache=False, **kwargs):
+
+def read_stock_data(stock_data_path, stock_codes, post_processor, data_type, obs_time, feature_num, load_from_cache=False, **kwargs):
     save_path = os.path.join(stock_data_path, 'TradeEnvData.dill')
     # in order by stock_code
     stock_codes = [stock_code.replace('.', '_') for stock_code in stock_codes]
@@ -236,10 +270,9 @@ def read_stock_data(stock_data_path, stock_codes, post_processor, data_type, fea
         with open(save_path, 'wb') as f:
             dill.dump((stock_codes, time_series, global_date_intersection), f)
     time_series_without_nan = deepcopy(time_series)
-    if post_processor[0].__name__ in force_apply_in_step:
+    if post_processor[0].__name__ not in force_apply_before_step and post_processor[0].__name__ in force_apply_in_step:
         F = lambda x: x
     else:
         F = lambda x: post_processor[0](x)
     time_series_without_nan.update(map(lambda t: (t[0], F(np.nan_to_num(t[1], nan=0., posinf=0., neginf=0.))), time_series_without_nan.items()))
     return stock_codes, time_series, time_series_without_nan, global_date_intersection
-

@@ -39,7 +39,7 @@ class StockActor(nn.Module):
         elif feature_extract == 'conv1d':
             feature_extract_output_shape = 256
             layers = [
-                Conv1d(in_channels=stock_obs_shape[-1]*stock_obs_shape[-2], out_channels=32, kernel_size=9, dilation=1),
+                Conv1d(in_channels=stock_obs_shape[-1] * stock_obs_shape[-2], out_channels=32, kernel_size=9, dilation=1),
                 BatchNorm1d(32),
                 LeakyReLU(),
                 Conv1d(in_channels=32, out_channels=32, kernel_size=7, dilation=2),
@@ -113,7 +113,8 @@ class StockActor(nn.Module):
         if self.agent_state:
             stock_obs, stock_position, money = self.pre_process(obs, state, info)
         else:
-            obs = {'stock_obs': obs}
+            if not isinstance(obs, dict):
+                obs = {'stock_obs': obs}
             stock_obs = self.pre_process(obs, state, info)
         batch, time, stocks, feature = stock_obs.shape
         # batch, feature
@@ -122,13 +123,13 @@ class StockActor(nn.Module):
         elif self.feature_extract == 'gru':
             stock_obs = self.feature_extract_layer(stock_obs.view(batch, time, -1))[0][:, -1, :]
         elif self.feature_extract == 'conv1d':
-            stock_obs = self.feature_extract_layer(stock_obs.view(batch, stock_obs.shape[1], -1).transpose(1, 2)).view(batch, -1)
+            stock_obs = self.feature_extract_layer(stock_obs.view(batch, stock_obs.shape[1], -1).transpose(1, 2)).transpose(1, 2).view(batch, -1)
         if self.agent_state:
             stock_position = stock_position.view(stock_position.shape[0], -1)
             stock_position = self.stock_pos_fc(stock_position)
             hidden = torch.cat((stock_obs, stock_position, money), dim=1)
         else:
-            hidden = stocks
+            hidden = stock_obs
         hidden = self.body(hidden)
         return hidden
 
@@ -174,7 +175,7 @@ class StockCritic(Module):
         elif feature_extract == 'conv1d':
             feature_extract_output_shape = 256
             layers = [
-                Conv1d(in_channels=stock_obs_shape[-1]*stock_obs_shape[-2], out_channels=32, kernel_size=9, dilation=1),
+                Conv1d(in_channels=stock_obs_shape[-1] * stock_obs_shape[-2], out_channels=32, kernel_size=9, dilation=1),
                 BatchNorm1d(32),
                 LeakyReLU(),
                 Conv1d(in_channels=32, out_channels=32, kernel_size=7, dilation=2),
@@ -250,7 +251,8 @@ class StockCritic(Module):
         if self.agent_state:
             stock_obs, stock_position, money, action = self.pre_process(obs, action, state, info)
         else:
-            obs = {'stock_obs': obs}
+            if not isinstance(obs, dict):
+                obs = {'stock_obs': obs}
             stock_obs, action = self.pre_process(obs, action, state, info)
         batch, time, stocks, feature = stock_obs.shape
         # batch, feature
@@ -259,13 +261,13 @@ class StockCritic(Module):
         elif self.feature_extract == 'gru':
             stock_obs = self.feature_extract_layer(stock_obs.view(batch, time, -1))[0][:, -1, :]
         elif self.feature_extract == 'conv1d':
-            stock_obs = self.feature_extract_layer(stock_obs.view(batch, stock_obs.shape[1], -1).transpose(1, 2)).view(batch, -1)
+            stock_obs = self.feature_extract_layer(stock_obs.view(batch, stock_obs.shape[1], -1).transpose(1, 2)).transpose(1, 2).view(batch, -1)
         if self.agent_state:
             stock_position = stock_position.view(stock_position.shape[0], -1)
             stock_position = self.stock_pos_fc(stock_position)
             hidden = torch.cat((stock_obs, stock_position, money), dim=1)
         else:
-            hidden = stocks
+            hidden = stock_obs
         return hidden, action
 
     def get_logits(self, hidden, action=None):

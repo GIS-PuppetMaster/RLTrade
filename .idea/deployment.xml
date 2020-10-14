@@ -16,6 +16,7 @@
             <excludedPath local="true" path="$PROJECT_DIR$/TensorboardLog" />
             <excludedPath local="true" path="$PROJECT_DIR$/TestResult" />
             <excludedPath local="true" path="$PROJECT_DIR$/wandb" />
+            <excludedPath local="true" path="$PROJECT_DIR$/EDA" />
           </excludedPaths>
         </serverdata>
       </paths>
@@ -33,6 +34,7 @@
             <excludedPath local="true" path="$PROJECT_DIR$/TensorboardLog" />
             <excludedPath local="true" path="$PROJECT_DIR$/TestResult" />
             <excludedPath local="true" path="$PROJECT_DIR$/wandb" />
+            <excludedPath local="true" path="$PROJECT_DIR$/EDA" />
           </excludedPaths>
         </serverdata>
       </paths>
@@ -50,6 +52,7 @@
             <excludedPath local="true" path="$PROJECT_DIR$/TensorboardLog" />
             <excludedPath local="true" path="$PROJECT_DIR$/TestResult" />
             <excludedPath local="true" path="$PROJECT_DIR$/wandb" />
+            <excludedPath local="true" path="$PROJECT_DIR$/EDA" />
           </excludedPaths>
         </serverdata>
       </paths>
@@ -67,6 +70,7 @@
             <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
             <excludedPath local="true" path="$PROJECT_DIR$/Data/raw" />
             <excludedPath local="true" path="$PROJECT_DIR$/PlotOutput" />
+            <excludedPath local="true" path="$PROJECT_DIR$/EDA" />
           </excludedPaths>
         </serverdata>
       </paths>
@@ -84,6 +88,7 @@
             <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
             <excludedPath local="true" path="$PROJECT_DIR$/Data/raw" />
             <excludedPath local="true" path="$PROJECT_DIR$/PlotOutput" />
+            <excludedPath local="true" path="$PROJECT_DIR$/EDA" />
           </excludedPaths>
         </serverdata>
       </paths>
@@ -101,6 +106,7 @@
             <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
             <excludedPath local="true" path="$PROJECT_DIR$/Data/raw" />
             <excludedPath local="true" path="$PROJECT_DIR$/PlotOutput" />
+            <excludedPath local="true" path="$PROJECT_DIR$/EDA" />
           </excludedPaths>
         </serverdata>
       </paths>

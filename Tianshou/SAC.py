@@ -1,6 +1,8 @@
 import sys
-
-sys.path.append("D:\\PycharmProjects\\Stable-BaselineTrading\\")
+if sys.platform == 'win32':
+    sys.path.append("D:\\PycharmProjects\\Stable-BaselineTrading\\")
+else:
+    sys.path.append("/usr/zkx/Stable-BaselineTrading/")
 import tianshou as ts
 from Env.TradeEnv import TradeEnv
 from Tianshou.Net.MultiStockTradeNet import *

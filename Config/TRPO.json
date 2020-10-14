@@ -146,7 +146,9 @@
     "vf_iters": 3,
     "verbose": 1,
     "_init_setup_model": true,
-    "policy_kwargs": null,
+    "policy_kwargs": {
+      "l2_ratio": 0
+    },
     "full_tensorboard_log": false,
     "n_cpu_tf_sess": 1
   },

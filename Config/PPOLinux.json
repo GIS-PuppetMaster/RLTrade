@@ -10,7 +10,7 @@
     "save_code": false
   },
   "env": {
-    "train_env_num": 16,
+    "train_env_num": 8,
     "test_env_num": 1,
     "wait_num": null,
     "time_out": null,
@@ -204,7 +204,7 @@
         "601998.XSHG"
       ],
       "trade_stock_num": 20,
-      "result_path": "../PlotOutput/TRPO/train/",
+      "result_path": "../PlotOutput/PPO/train/",
       "principal": 1e5,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
@@ -426,7 +426,7 @@
         "601998.XSHG"
       ],
       "trade_stock_num": 20,
-      "result_path": "../PlotOutput/TRPO/test/",
+      "result_path": "../PlotOutput/PPO/test/",
       "principal": 1e5,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
@@ -461,6 +461,7 @@
   },
   "policy": {
     "lr": 1e-4,
+    "l2_ratio": 0,
     "actor": {
       "forecast_length": 2,
       "stack_types": [
@@ -506,26 +507,30 @@
         "Normal"
       ],
       "discount_factor": 0.8,
+      "max_grad_norm": 0.1,
+      "eps_clip": 0.2,
       "vf_coef": 0.5,
       "ent_coef": 0.01,
-      "max_grad_norm": null,
       "gae_lambda": 0.95,
-      "reward_normalization": false
+      "dual_clip": null,
+      "value_clip": true,
+      "reward_normalization": true,
+      "max_batchsize": 1024
     }
   },
   "train": {
     "replay_buffer": {
-      "size": 1100,
+      "size": 10000,
       "alpha": 0.6,
       "beta": 0.4
     },
     "train_parameter": {
       "max_epoch": 1000,
       "step_per_epoch": 1,
-      "collect_per_step": 5,
-      "repeat_per_collect": 2,
+      "collect_per_step": 1,
+      "repeat_per_collect": 1,
       "episode_per_test": 1,
-      "batch_size": 16,
+      "batch_size": 1024,
       "log_interval": 1,
       "verbose": true,
       "test_in_train": true

@@ -14,6 +14,8 @@ from empyrical import sortino_ratio
 import cupy as cp
 from copy import deepcopy
 import random
+import itertools
+import math
 
 """
 日间择时，开盘或收盘交易
@@ -71,12 +73,17 @@ class TradeEnv(gym.Env):
         self.data_type = data_type
         self.feature_num = feature_num
         self.noise_rate = noise_rate
+        post_processor_ = list(itertools.chain.from_iterable(post_processor))
+        if not agent_state:
+            post_processor_ = post_processor_[0:2]
+        if 'diff' in post_processor_:
+            obs_time_size += 1
         self.obs_time = obs_time_size
         self.post_processor = get_modules(post_processor)
         self.agent_state = agent_state
         self.load_from_cache = load_from_cache
         # raw_time_list包含了原始数据中的所有日期
-        self.all_stock_codes, self.all_stock_data, self.all_stock_data_for_state, self.raw_time_list = read_stock_data(stock_data_path, stock_codes, self.post_processor, data_type, feature_num,
+        self.all_stock_codes, self.all_stock_data, self.all_stock_data_for_state, self.raw_time_list = read_stock_data(stock_data_path, stock_codes, self.post_processor, data_type, obs_time_size, feature_num,
                                                                                                                        load_from_cache)
         self.select_stock_set()
         # time_list只包含交易环境可用的有效日期
@@ -85,8 +92,15 @@ class TradeEnv(gym.Env):
                                        high=np.array(
                                            [float(action_bound[1]) for _ in range(self.trade_stock_num)] + [
                                                float(action_bound[1]), ]))
-        obs_low = np.full((self.obs_time, self.trade_stock_num, self.feature_num), float('-inf'))
-        obs_high = np.full((self.obs_time, self.trade_stock_num, self.feature_num), float('inf'))
+        if 'diff' in post_processor_:
+            obs_low = np.full((self.obs_time - 1, self.trade_stock_num, self.feature_num), float('-inf'))
+            obs_high = np.full((self.obs_time - 1, self.trade_stock_num, self.feature_num), float('inf'))
+        elif 'wavelet' in post_processor_:
+            obs_low = np.full((math.ceil(self.obs_time / pow(2, 3)), self.trade_stock_num, self.feature_num), float('-inf'))
+            obs_high = np.full((math.ceil(self.obs_time / pow(2, 3)), self.trade_stock_num, self.feature_num), float('inf'))
+        else:
+            obs_low = np.full((self.obs_time, self.trade_stock_num, self.feature_num), float('-inf'))
+            obs_high = np.full((self.obs_time, self.trade_stock_num, self.feature_num), float('inf'))
         if agent_state:
             assert len(self.post_processor) == 3
             position_low = np.zeros(shape=(2, self.trade_stock_num))
@@ -105,7 +119,7 @@ class TradeEnv(gym.Env):
         self.env_type = env_type
         self.wandb_log = wandb_log
         if self.noise_rate != 0:
-            self.noise_list = [np.random.multivariate_normal([0], [[self.noise_rate]], (self.obs_time, self.trade_stock_num, self.feature_num))[..., 0] for _ in range(10000)]
+            self.noise_list = [np.random.random((self.obs_time, self.trade_stock_num, self.feature_num)) for _ in range(10000)]
         if wandb_log:
             if config['global_wandb']:
                 wandb.init(project=config['wandb']['project'])
@@ -157,6 +171,7 @@ class TradeEnv(gym.Env):
         return price
 
     def step(self, action: np.ndarray):
+        assert not np.isnan(action).any()
         self.step_ += 1
         if self.step_ >= self.episode_len or self.index >= len(self.time_list):
             self.done = True
@@ -265,7 +280,7 @@ class TradeEnv(gym.Env):
                     stock_index=self.stock_index)
         obs = self.get_state()
         if self.done and ((self.env_type == 'train' and self.episode % 20 == 0) or (
-                self.env_type == 'test' and self.episode % 10 == 0)):
+                self.env_type == 'test')):
             self.render('hybrid')
         return obs, reward, self.done, info
 
@@ -276,7 +291,8 @@ class TradeEnv(gym.Env):
         for idx, date in enumerate(time_series):
             stock_obs[idx, ...] = self.stock_data_for_state[date]
         if self.noise_rate != 0.:
-            stock_obs += self.noise_list[random.randint(0, len(self.noise_list) - 1)]
+            not_zero_mask = (stock_obs != 0)
+            stock_obs[not_zero_mask] += self.noise_list[random.randint(0, len(self.noise_list) - 1)][not_zero_mask]
         if self.post_processor[0].__name__ in force_apply_in_step:
             stock_obs = self.post_processor[0](stock_obs)
         if self.agent_state:

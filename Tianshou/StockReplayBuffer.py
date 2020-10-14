@@ -56,6 +56,10 @@ class StockReplayBuffer(tianshou.data.ReplayBuffer):
         return obs
 
     def _convert_obs(self, obs: dict, obs_next: Optional[dict], info: dict) -> (np.ndarray, np.ndarray):
+        if not isinstance(obs, dict):
+            obs = {'stock_obs': obs}
+        if not isinstance(obs_next, dict):
+            obs_next = {'stock_obs': obs_next}
         obs_pass_date = info['obs_pass_date']
         obs_current_date = info['obs_current_date']
         obs_next_pass_date = info['obs_next_pass_date']
@@ -78,8 +82,12 @@ class StockReplayBuffer(tianshou.data.ReplayBuffer):
                 np.expand_dims(self._get_stock_obs(obs_next['stock_obs'][i, ...], info), axis=0))
         obs_replaced = np.concatenate(obs_replaced, axis=0)
         obs_next_replaced = np.concatenate(obs_next_replaced, axis=0)
-        obs['stock_obs'] = obs_replaced
-        obs_next['stock_obs'] = obs_next_replaced
+        if len(obs.keys())==1:
+            obs = obs_replaced
+            obs_next = obs_next_replaced
+        else:
+            obs['stock_obs'] = obs_replaced
+            obs_next['stock_obs'] = obs_next_replaced
         return obs, obs_next
 
     def __getitem__(self, index: np.ndarray) -> Batch:

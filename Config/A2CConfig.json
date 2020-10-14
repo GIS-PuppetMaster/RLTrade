@@ -203,15 +203,16 @@
         "601989.XSHG",
         "601998.XSHG"
       ],
-      "result_path": "E:/运行结果/A2C/train/",
-      "principal": 1e6,
+      "trade_stock_num": 20,
+      "result_path": "../PlotOutput/TRPO/train/",
+      "principal": 1e5,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
         [
           "Util.Util",
-          "log10plus1R"
+          "diff_log10plus1R"
         ],
         [
           "Util.Util",
@@ -223,13 +224,17 @@
         ]
       ],
       "trade_time": "open",
-      "agent_state": true,
+      "agent_state": false,
       "data_type": "day",
       "feature_num": 32,
       "noise_rate": 0,
       "load_from_cache": true,
       "wandb_log": false,
-      "env_type": "train"
+      "env_type": "train",
+      "action_bound": [
+        -1,
+        1
+      ]
     },
     "test": {
       "stock_data_path": "../Data/test/",
@@ -420,15 +425,16 @@
         "601989.XSHG",
         "601998.XSHG"
       ],
-      "result_path": "E:/运行结果/A2C/test/",
-      "principal": 1e6,
+      "trade_stock_num": 20,
+      "result_path": "../PlotOutput/TRPO/test/",
+      "principal": 1e5,
       "poundage_rate": 2.5e-3,
       "time_format": "%Y-%m-%d",
       "auto_open_result": false,
       "post_processor": [
         [
           "Util.Util",
-          "log10plus1R"
+          "diff_log10plus1R"
         ],
         [
           "Util.Util",
@@ -440,13 +446,17 @@
         ]
       ],
       "trade_time": "open",
-      "agent_state": true,
+      "agent_state": false,
       "data_type": "day",
       "feature_num": 32,
       "noise_rate": 0,
       "load_from_cache": true,
       "wandb_log": false,
-      "env_type": "test"
+      "env_type": "test",
+      "action_bound": [
+        -1,
+        1
+      ]
     }
   },
   "policy": {
@@ -466,7 +476,9 @@
       ],
       "share_weights_in_stack": false,
       "hidden_layer_units": 64,
-      "feature_extract": "nbeats"
+      "feature_extract": "conv1d",
+      "l2_ratio": 1e-3,
+      "batch_norm": true
     },
     "critic": {
       "forecast_length": 2,
@@ -483,7 +495,9 @@
       ],
       "share_weights_in_stack": false,
       "hidden_layer_units": 64,
-      "feature_extract": "nbeats",
+      "feature_extract": "conv1d",
+      "l2_ratio": 1e-3,
+      "batch_norm": true,
       "with_action": false
     },
     "policy_parameter": {
@@ -491,12 +505,12 @@
         "torch.distributions.normal",
         "Normal"
       ],
-      "discount_factor": 0.99,
+      "discount_factor": 0.8,
       "vf_coef": 0.5,
       "ent_coef": 0.01,
       "max_grad_norm": null,
       "gae_lambda": 0.95,
-      "reward_normalization": true
+      "reward_normalization": false
     }
   },
   "train": {
@@ -508,7 +522,7 @@
     "train_parameter": {
       "max_epoch": 1000,
       "step_per_epoch": 1,
-      "collect_per_step": 1000,
+      "collect_per_step": 5,
       "repeat_per_collect": 2,
       "episode_per_test": 1,
       "batch_size": 16,
