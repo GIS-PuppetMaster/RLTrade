@@ -77,6 +77,13 @@ def norm_processor(state):
 
 
 @jit
+def uniformed_log10plus1R(x):
+    x = log10plus1R(x) / log10plus1R(np.max(x, axis=0, keepdims=True))
+    x = np.nan_to_num(x, nan=0., posinf=0., neginf=0.)
+    return x
+
+
+@jit
 def selective_log10plus1R(x):
     x, F = covert_type(x)
     x[F.abs(x) > 10] = log10plus1R(x[F.abs(x) > 10])
@@ -105,7 +112,8 @@ def diff_selective_log10plus1R(x):
     x = F.diff(x, prepend=0)
     return selective_log10plus1R(x)
 
-@jit(parallel=True,nogil=True)
+
+@jit(parallel=True, nogil=True)
 def wavelet(x):
     z = [None] * x.shape[1]
     for stock in range(x.shape[1]):
@@ -204,25 +212,17 @@ def LoadCustomPolicyForTest(model_path):
     return model
 
 
-def read_stock_data(stock_data_path, stock_codes, post_processor, data_type, obs_time, feature_num, load_from_cache=False, **kwargs):
+def read_stock_data(stock_data_path, stock_codes, post_processor, data_type, obs_time, load_from_cache=False, block_feature=None, **kwargs):
     save_path = os.path.join(stock_data_path, 'TradeEnvData.dill')
     # in order by stock_code
     stock_codes = [stock_code.replace('.', '_') for stock_code in stock_codes]
     stock_codes = sorted(stock_codes)
-    miss_match = False
-    if load_from_cache and os.path.exists(save_path):
-        try:
-            with open(save_path, 'rb') as f:
-                stock_codes_, time_series, global_date_intersection = dill.load(f)
-            miss_match = stock_codes != stock_codes_ or list(time_series.values())[0].shape[1] != feature_num
-            if not miss_match:
-                print("数据读取完毕")
-            else:
-                print("数据不匹配，重新读入并覆盖")
-        except:
-            miss_match = True
 
-    if not load_from_cache or not os.path.exists(save_path) or miss_match:
+    if load_from_cache and os.path.exists(save_path):
+        with open(save_path, 'rb') as f:
+            stock_codes_, time_series, global_date_intersection = dill.load(f)
+
+    if not load_from_cache or not os.path.exists(save_path):
         stocks = OrderedDict()
         date_index = []
         for idx, stock_code in enumerate(stock_codes):
@@ -233,12 +233,16 @@ def read_stock_data(stock_data_path, stock_codes, post_processor, data_type, obs
                 raise Exception(f"Wrong data type for:{data_type}")
             raw_moneyflow = pd.read_csv(stock_data_path + stock_code + '_moneyflow.csv', index_col=False)[
                 ['date', 'change_pct', 'net_pct_main', 'net_pct_xl', 'net_pct_l', 'net_pct_m', 'net_pct_s']].apply(
-                lambda x: x / 100 if isinstance(x[1], np.float64) else x)
+                lambda x: x if isinstance(x[1], np.float64) else x)
+            raw_fundamental = pd.read_csv(stock_data_path + stock_code + '_fundamental.csv', index_col=False)
             raw = pd.merge(raw, raw_moneyflow, left_on='Unnamed: 0', right_on='date', sort=False, copy=False).drop(
                 'date', 1).rename(columns={'Unnamed: 0': 'date'})
+            raw = pd.merge(raw, raw_fundamental, left_on='date', right_on='day', sort=False, copy=False).drop('day', axis=1)
             raw.fillna(method='ffill', inplace=True)
             date_index.append(np.array(raw['date']))
             raw.set_index('date', inplace=True)
+            if block_feature:
+                raw.drop(block_feature, axis=1, inplace=True)
             stocks[stock_code] = raw
         # 生成各支股票数据按时间的并集
         global_date_intersection = date_index[0]
@@ -269,10 +273,12 @@ def read_stock_data(stock_data_path, stock_codes, post_processor, data_type, obs
             time_series[date] = np.array(stock_data_in_date)
         with open(save_path, 'wb') as f:
             dill.dump((stock_codes, time_series, global_date_intersection), f)
-    time_series_without_nan = deepcopy(time_series)
+    post_processed_time_series = deepcopy(time_series)
     if post_processor[0].__name__ not in force_apply_before_step and post_processor[0].__name__ in force_apply_in_step:
         F = lambda x: x
     else:
         F = lambda x: post_processor[0](x)
-    time_series_without_nan.update(map(lambda t: (t[0], F(np.nan_to_num(t[1], nan=0., posinf=0., neginf=0.))), time_series_without_nan.items()))
-    return stock_codes, time_series, time_series_without_nan, global_date_intersection
+    post_processed_time_series.update(map(lambda t: (t[0], F(np.nan_to_num(t[1], nan=0., posinf=0., neginf=0.))), post_processed_time_series.items()))
+    data_shape = list(time_series.values())[0].shape
+    print(f'data shape:{data_shape}')
+    return stock_codes, time_series, post_processed_time_series, global_date_intersection, data_shape

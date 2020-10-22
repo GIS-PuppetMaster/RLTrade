@@ -18,8 +18,8 @@ import argparse
 
 
 def make_env(config, seed, mode, id):
-    env_config = config['env'][mode]
-
+    env_config = config['env']['common']
+    env_config.update(config['env'][mode])
     def get_env():
         env = TradeEnv(config=config, env_id=id, **env_config)
         env.seed(seed)
@@ -38,6 +38,7 @@ def replace_path(path, insert_fold):
 
 if __name__ == '__main__':
     name = input("please input run_name:\n")
+    # name = 'debug'
     argparse = argparse.ArgumentParser()
     argparse.add_argument('--config', type=str, default=None)
     args = argparse.parse_args()
@@ -49,7 +50,9 @@ if __name__ == '__main__':
         wandb.init(project='Stable-BaselineTradingV3', sync_tensorboard=True, config=conf, tensorboard=True, notes=name)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = conf['train']['gpu']
-    eval_env = TradeEnv(config=conf, **conf['env']['test'], env_id=0)
+    test_config = conf['env']['common']
+    test_config.update(conf['env']['test'])
+    eval_env = TradeEnv(config=conf, **test_config, env_id=0)
     if conf['seed'] is not None:
         eval_env.seed(conf['seed'])
     env = DummyVecEnv([make_env(conf, conf['seed'], 'train', id) for id in range(conf['env']['train_env_num'])])

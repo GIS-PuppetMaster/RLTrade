@@ -6,6 +6,7 @@
       <w>gelu</w>
       <w>logdir</w>
       <w>logits</w>
+      <w>macddi</w>
       <w>moneyflow</w>
       <w>ndarray</w>
       <w>noncum</w>

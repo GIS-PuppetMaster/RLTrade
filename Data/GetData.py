@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from jqdatasdk import *
 import jqdatasdk as jq
 from datetime import datetime
@@ -46,13 +48,13 @@ def get_money_flow_(stock_codes, start_date, end_date, skip_exists=False, skip_c
     return stock_list
 
 
-def get_fundamentals_df():
+def get_fundamentals_df(mode):
     import dill
     import math
-    with open('./train/TradeEnvData.dill', 'rb') as f:
+    with open(f'./{mode}/TradeEnvData.dill', 'rb') as f:
         stock_codes_, time_series, global_date_intersection = dill.load(f)
-    global_date_intersection = global_date_intersection[:120]
-    q = query(valuation).filter(valuation.code.in_(list(map(lambda x: x.replace('_', '.'), stock_codes_))))
+    format_stocks = list(map(lambda x: x.replace('_', '.'), stock_codes_))
+    q = query(valuation).filter(valuation.code.in_(format_stocks))
     df = None
     window_size = 10000 // len(stock_codes_)
     time_iter_times = math.ceil(len(global_date_intersection) / window_size)
@@ -67,7 +69,27 @@ def get_fundamentals_df():
             df = data
         else:
             df = pd.concat([df, data], axis=0)
-    return df
+    for stock in format_stocks:
+        stock_df = df[df.code == stock]
+        stock_df.fillna(method='ffill', inplace=True)
+        stock_df.fillna(method='bfill', inplace=True)
+        stock_ = stock.replace('.', '_')
+        stock_df = stock_df.reset_index(drop=True).drop(['id', 'code.1', 'day.1'], axis=1)
+        stock_df.to_csv(f'./{mode}/{stock_}_fundamental.csv', index=False)
+        print(f'saved {stock}')
+
+def clean(mode):
+    file_list_ = os.listdir(f'./{mode}/')
+    file_list = []
+    for file in file_list_:
+        if 'fundamental' in file:
+            file_list.append(file)
+    for file in file_list:
+        try:
+            df = pd.read_csv(f'./{mode}/{file}').drop('code', axis=1)
+            df.to_csv(f'./{mode}/{file}', index=False)
+        except:
+            pass
 
 
 if __name__ == '__main__':
@@ -76,7 +98,10 @@ if __name__ == '__main__':
     except:
         pass
     jq.auth('15143292011', 'qwer12345')
-    df = get_fundamentals_df()
+    # get_fundamentals_df('train')
+    # get_fundamentals_df('test')
+    clean('train')
+    clean('test')
     # with open('./000300_XSHG_list.txt', 'r') as f:
     #     stock_list = f.read()
     # stock_list = stock_list.replace("[", "").replace("]", "").replace("\'", "").replace("\"", "").replace(" ", "").split(",")

@@ -22,21 +22,10 @@ with open('../Data/000300_XSHG_list.pkl', 'rb') as f:
 exp_name = 'testEnv'
 with open('../Config/TRPOLinux.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
-config['env']['test']['post_processor'] = [
-        [
-          "Util.Util",
-          "wavelet"
-        ],
-        [
-          "Util.Util",
-          "log10plus1R"
-        ],
-        [
-          "Util.Util",
-          "log10plus1R"
-        ]
-      ]
-time_steps, stocks, input_dim, output_dim = 60, config['env']['train']['trade_stock_num'], 32, 2
+env_config = config['env']['common']
+env_config.update(config['env']['train'])
+# env_config['load_from_cache']=False
+time_steps, stocks, output_dim = config['env']['common']['obs_time_size'], len(config['env']['train']['stock_codes']), 2
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Definition of the model.
@@ -44,7 +33,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 #                   stack_types=(NBeatsNet.GENERIC_BLOCK, NBeatsNet.TREND_BLOCK, NBeatsNet.SEASONALITY_BLOCK),
 #                   nb_blocks_per_stack=2,
 #                   thetas_dims=(4, 4, 4), share_weights_in_stack=True, hidden_layer_units=64, device=device)
-env = TradeEnv(**config['env']['test'], config=config)
+env = TradeEnv(**env_config, config=config)
 env.seed(0)
 times = 5
 for _ in range(times):
@@ -58,5 +47,4 @@ for _ in range(times):
         obs, reward, done, _ = env.step(action)
         i += 1
     # env.render('hybrid')
-    print(time()-t)
-
+    print(time() - t)

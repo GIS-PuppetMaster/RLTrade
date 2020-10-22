@@ -16,6 +16,7 @@
     "wait_num": null,
     "time_out": null,
     "common": {
+      "stock_data_path": "../Data/raw/",
       "obs_time_size": 60,
       "sim_delta_time": 1,
       "time_format": "%Y-%m-%d",
@@ -39,52 +40,30 @@
       "agent_state": false,
       "data_type": "day",
       "load_from_cache": false,
+      "start_episode": 0,
+      "episode_len": 250,
+      "select_num": 4,
+      "stock_codes": [
+        "000001.XSHE"
+      ],
+      "result_path": "../PlotOutput/TRPO/train/",
+      "principal": 1e5,
+      "move_roll_window_step": 30,
+      "train_set_days": 250,
+      "test_set_days": 30,
+      "poundage_rate": 1e-3,
+      "auto_open_result": false,
+      "noise_rate": 0,
+      "wandb_log": false,
+      "env_type": "train",
       "action_bound": [
         -1,
         1
       ]
-    },
-    "train": {
-      "stock_data_path": "../Data/train/",
-      "start_episode": 0,
-      "episode_len": 250,
-      "select_num": 4,
-      "stock_codes": [
-        "000001.XSHE",
-        "000002.XSHE",
-        "000063.XSHE",
-        "000066.XSHE"
-      ],
-      "result_path": "../PlotOutput/TRPO/train/",
-      "principal": 1e5,
-      "poundage_rate": 1e-3,
-      "auto_open_result": false,
-      "noise_rate": 0,
-      "wandb_log": false,
-      "env_type": "train"
-    },
-    "test": {
-      "stock_data_path": "../Data/test/",
-      "start_episode": 0,
-      "episode_len": 250,
-      "select_num": 4,
-      "stock_codes": [
-        "000001.XSHE",
-        "000002.XSHE",
-        "000063.XSHE",
-        "000066.XSHE"
-      ],
-      "result_path": "../PlotOutput/TRPO/test/",
-      "principal": 1e5,
-      "poundage_rate": 1e-3,
-      "auto_open_result": false,
-      "noise_rate": 0,
-      "wandb_log": false,
-      "env_type": "test"
     }
   },
   "policy": {
-    "gamma": 0.8,
+    "gamma": 0.9,
     "timesteps_per_batch":1024,
     "max_kl": 0.01,
     "cg_iters": 10,
@@ -103,7 +82,7 @@
     "n_cpu_tf_sess": null
   },
   "train": {
-    "total_timesteps": 250000000,
+    "total_timesteps": 250000,
     "log_dir": "../TensorboardLog/",
     "save_dir": "../checkpoints",
     "gpu": "0",

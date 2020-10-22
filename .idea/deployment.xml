@@ -1,7 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="root@119.3.165.88:22 password" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="root@114.116.254.148:22" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
+      <paths name="root@114.116.254.148:22">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/usr/zkx/Stable-BaselineTrading" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
+            <excludedPath local="true" path="$PROJECT_DIR$/PlotOutput" />
+            <excludedPath local="true" path="$PROJECT_DIR$/log" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TensorboardLog" />
+            <excludedPath local="true" path="$PROJECT_DIR$/TestResult" />
+            <excludedPath local="true" path="$PROJECT_DIR$/wandb" />
+            <excludedPath local="true" path="$PROJECT_DIR$/Stable-Baseline/wandb" />
+            <excludedPath local="true" path="$PROJECT_DIR$/Tianshou/wandb" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
       <paths name="root@119.3.165.88:22 password">
         <serverdata>
           <mappings>
