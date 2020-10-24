@@ -35,25 +35,25 @@
           "uniformed_log10plus1R"
         ]
       ],
-      "block_feature": ["circulating_cap","capitalization","RSI","MFI","TSI","UO","AO","MACDDI","VIP","VIN","TRIX","MI","CCI","DPO","ARU","ARD","BBH","BBL","BBM","CMF","DR","DLR"],
+      "block_feature": ["circulating_cap","capitalization"],
       "trade_time": "open",
       "agent_state": false,
       "data_type": "day",
       "load_from_cache": false,
       "start_episode": 0,
       "episode_len": 250,
-      "select_num": 4,
+      "select_num": 1,
       "stock_codes": [
         "000001.XSHE"
       ],
       "result_path": "../PlotOutput/TRPO/train/",
       "principal": 1e5,
-      "move_roll_window_step": 30,
-      "train_set_days": 250,
-      "test_set_days": 30,
+      "move_roll_window_step": 60,
+      "train_set_days": 500,
+      "test_set_days": 60,
       "poundage_rate": 1e-3,
       "auto_open_result": false,
-      "noise_rate": 0,
+      "noise_rate":0.1,
       "wandb_log": false,
       "env_type": "train",
       "action_bound": [
@@ -63,7 +63,7 @@
     }
   },
   "policy": {
-    "gamma": 0.9,
+    "gamma": 0.8,
     "timesteps_per_batch":1024,
     "max_kl": 0.01,
     "cg_iters": 10,

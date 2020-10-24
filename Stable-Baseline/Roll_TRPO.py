@@ -60,9 +60,9 @@ if __name__ == '__main__':
     last_mean_reward = -np.inf
     best_mean_reward = -np.inf
     idx = 0
-    model = TRPO(CustomMultiStockPolicy, env, tensorboard_log=conf['train']['log_dir'], seed=conf['seed'], **conf['policy'])
     while True:
         print(f"Round:{idx}")
+        model = TRPO(CustomMultiStockPolicy, env, tensorboard_log=conf['train']['log_dir'], seed=conf['seed'], **conf['policy'])
         model.learn(total_timesteps=conf['train']['total_timesteps'])
         split_point = env.envs[0].split_point
         eval_env.split_point = split_point

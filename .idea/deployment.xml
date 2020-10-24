@@ -76,55 +76,22 @@
       <paths name="server1">
         <serverdata>
           <mappings>
-            <mapping deploy="/Stable-BaselineTrading" local="$PROJECT_DIR$" web="/" />
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
-          <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/wandb" />
-            <excludedPath local="true" path="$PROJECT_DIR$/TensorboardLog" />
-            <excludedPath local="true" path="$PROJECT_DIR$/PreTrainedEncoder" />
-            <excludedPath local="true" path="$PROJECT_DIR$/ConfigSet" />
-            <excludedPath local="true" path="$PROJECT_DIR$/TestResult" />
-            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
-            <excludedPath local="true" path="$PROJECT_DIR$/Data/raw" />
-            <excludedPath local="true" path="$PROJECT_DIR$/PlotOutput" />
-            <excludedPath local="true" path="$PROJECT_DIR$/EDA" />
-          </excludedPaths>
         </serverdata>
       </paths>
       <paths name="server2">
         <serverdata>
           <mappings>
-            <mapping deploy="/Stable-BaselineTrading" local="$PROJECT_DIR$" web="/" />
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
-          <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/wandb" />
-            <excludedPath local="true" path="$PROJECT_DIR$/TensorboardLog" />
-            <excludedPath local="true" path="$PROJECT_DIR$/PreTrainedEncoder" />
-            <excludedPath local="true" path="$PROJECT_DIR$/ConfigSet" />
-            <excludedPath local="true" path="$PROJECT_DIR$/TestResult" />
-            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
-            <excludedPath local="true" path="$PROJECT_DIR$/Data/raw" />
-            <excludedPath local="true" path="$PROJECT_DIR$/PlotOutput" />
-            <excludedPath local="true" path="$PROJECT_DIR$/EDA" />
-          </excludedPaths>
         </serverdata>
       </paths>
       <paths name="server3">
         <serverdata>
           <mappings>
-            <mapping deploy="/Stable-BaselineTrading" local="$PROJECT_DIR$" web="/" />
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
-          <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/wandb" />
-            <excludedPath local="true" path="$PROJECT_DIR$/TensorboardLog" />
-            <excludedPath local="true" path="$PROJECT_DIR$/PreTrainedEncoder" />
-            <excludedPath local="true" path="$PROJECT_DIR$/ConfigSet" />
-            <excludedPath local="true" path="$PROJECT_DIR$/TestResult" />
-            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
-            <excludedPath local="true" path="$PROJECT_DIR$/Data/raw" />
-            <excludedPath local="true" path="$PROJECT_DIR$/PlotOutput" />
-            <excludedPath local="true" path="$PROJECT_DIR$/EDA" />
-          </excludedPaths>
         </serverdata>
       </paths>
     </serverData>

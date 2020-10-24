@@ -162,13 +162,14 @@ class TradeEnv(gym.Env):
     def reset(self):
         if self._env_type == 'train':
             self.activate_time_list = self.time_list[self.split_point - self.train_set_days:self.split_point]
+            self.index = np.random.randint(low=0, high=len(self.activate_time_list) - self.episode_len)
         else:
             self.activate_time_list = self.time_list[self.split_point:self.split_point + self.test_set_days]
+            self.index = 0
         # 初始化时间
-        self.index = 0
         self.current_time = self.activate_time_list[self.index]
         self.done = False
-        if self._env_type=='train':
+        if self._env_type == 'train':
             self.init_account()
         self.episode += 1
         self.step_ = 0
@@ -315,7 +316,7 @@ class TradeEnv(gym.Env):
         stock_obs = np.zeros(shape=(self.obs_time, self.obs_stock_num, self.feature_num))
         for idx, date in enumerate(time_series):
             stock_obs[idx, ...] = self.stock_data_for_state[date]
-        if self.noise_rate != 0.:
+        if self.noise_rate != 0. and self._env_type != 'test':
             not_zero_mask = (stock_obs != 0)
             stock_obs[not_zero_mask] += self.noise_list[random.randint(0, len(self.noise_list) - 1)][not_zero_mask]
         if self.post_processor[0].__name__ in force_apply_in_step:
